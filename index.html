@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phone Anatomy Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: an archive sheet. One monospace face at one size on white; grey labels, near-black values, bracketed controls. The 3D render sits in a single black plate in the middle column. Single light theme by choice. */
+:root{
+  --bg:#ffffff; --ink:#171717; --mute:#737373; --line:#e4e4e4; --plate:#000000; --hot:#ff5a00;
+  --mono:"Geist Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --body:"Geist",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --display:"Geist",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:400 13px/1.6 var(--mono);letter-spacing:-.02em;-webkit-font-smoothing:antialiased}
+button,input{font:inherit;letter-spacing:inherit;color:inherit}
+button{background:none;border:0;padding:0;cursor:pointer;text-align:left}
+:focus-visible{outline:1px solid var(--ink);outline-offset:3px}
+p,dl,dd,h1,h2,h3{margin:0;font-weight:400;font-size:inherit}
+
+.b{text-transform:uppercase;white-space:nowrap}
+.b::before{content:"[ "}.b::after{content:" ]"}
+.b:hover{color:var(--mute)}
+.b[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.lab{display:flex;justify-content:space-between;gap:12px;text-transform:uppercase;color:var(--ink);margin-bottom:14px}
+.lab span+span{color:var(--mute)}
+
+.app{height:100%;display:grid;grid-template-rows:auto 1fr}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px 28px;padding:16px 20px 0}
+.brand{display:flex;gap:28px}
+.brand span+span{color:var(--mute)}
+.modes{display:flex;flex-wrap:wrap;gap:4px 18px}
+
+main{display:grid;grid-template-columns:minmax(220px,290px) minmax(0,1fr) minmax(250px,330px);gap:36px;padding:44px 20px 20px;min-height:0}
+.col{overflow-y:auto;min-height:0;scrollbar-width:thin;padding:0 4px 24px 0}
+#detail p{color:var(--mute);max-width:38ch;margin-bottom:34px}
+#detail p.task{color:var(--ink)}
+.act{display:flex;flex-wrap:wrap;gap:6px 18px;text-transform:uppercase}
+.chk{white-space:pre;text-transform:uppercase}
+.chk:hover{color:var(--mute)}
+
+.stagewrap{display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:14px;min-height:0;min-width:0}
+.devs,.tools{display:flex;flex-wrap:wrap;gap:4px 18px;align-items:center;min-height:21px}
+.tools label{display:flex;align-items:center;gap:12px;text-transform:uppercase;color:var(--mute);margin-left:auto}
+input[type=range]{-webkit-appearance:none;appearance:none;width:150px;height:13px;background:linear-gradient(var(--ink),var(--ink)) center/100% 1px no-repeat;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:9px;height:13px;background:var(--ink);border:0;border-radius:0}
+input[type=range]::-moz-range-thumb{width:9px;height:13px;background:var(--ink);border:0;border-radius:0}
+
+.stage{position:relative;overflow:hidden;min-height:0;touch-action:none;cursor:grab;user-select:none;border:1px solid var(--line);
+  background:radial-gradient(ellipse 55% 46% at 2% 2%,rgba(72,74,122,.42),transparent 70%),radial-gradient(ellipse 45% 40% at 100% 4%,rgba(60,60,84,.2),transparent 70%),radial-gradient(ellipse 60% 50% at 50% 60%,rgba(40,40,48,.25),transparent 75%),var(--plate)}
+.stage.dragging{cursor:grabbing}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block}
+.css3d{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.cam3d{position:absolute;left:0;top:0;transform-style:preserve-3d;pointer-events:none}
+#screen{position:absolute;left:0;top:0;width:240px;height:510px;border-radius:35px;overflow:hidden;background:#07080a;pointer-events:auto;backface-visibility:hidden;letter-spacing:0}
+#screen::after{content:"";position:absolute;inset:0;border-radius:35px;background:linear-gradient(115deg,rgba(255,255,255,.13),transparent 28%,transparent 74%,rgba(255,255,255,.05));pointer-events:none;z-index:30}
+.hw .css3d{display:none}
+#tags{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.tag{position:absolute;left:0;top:0;white-space:nowrap;text-transform:uppercase;color:#f2f2f2;background:#000;padding:0 6px 0 7px;opacity:0;font-size:12px;line-height:1.5}
+.tag::before{content:"";position:absolute;left:0;top:0;height:calc(100% + var(--h));border-left:1px solid rgba(255,255,255,.55)}
+.tag.r::before{left:auto;right:0}
+.pinpt{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;display:none}
+.pinpt i{position:absolute;left:-11px;top:-11px;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--hot);animation:pulse 1.3s ease-in-out infinite}
+.pinpt i::after{content:"";position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px;border-radius:50%;background:var(--hot)}
+.callout,.hint{position:absolute;left:14px;text-transform:uppercase;pointer-events:none;font-size:12px}
+.callout{top:11px;color:#f2f2f2}
+.hint{bottom:10px;color:#8a8a8a}
+.glerr{position:absolute;left:50%;top:45%;transform:translate(-50%,-50%);max-width:340px;text-align:center;color:#aaa}
+#screen [data-p]{cursor:pointer}
+.stage .hl{outline:2px solid var(--hot)!important;outline-offset:2px;box-shadow:0 0 0 6px rgba(255,90,0,.3);animation:pulse 1.3s ease-in-out infinite;z-index:8}
+.stage .scn.hl{outline-offset:-3px;animation:none;box-shadow:inset 0 0 0 7px rgba(255,90,0,.3)}
+@keyframes pulse{50%{box-shadow:0 0 0 2px rgba(255,90,0,.15)}}
+@media (prefers-reduced-motion: reduce){.stage .hl,.pinpt i{animation:none}}
+
+#meta{display:grid;grid-template-columns:1fr 1fr;gap:16px 20px;margin-bottom:44px}
+#meta div.w{grid-column:1/-1}
+#meta dt{color:var(--mute)}
+.grp{margin-bottom:26px}
+.grp h3{color:var(--mute);text-transform:uppercase;margin-bottom:6px}
+.li{display:grid;grid-template-columns:4ch 1fr auto;gap:0 6px;width:100%;padding:1px 0}
+.li span:first-child{color:var(--mute)}
+.li:hover span{color:var(--mute)}
+.li[aria-current="true"]{background:var(--ink)}
+.li[aria-current="true"] span,.li[aria-current="true"]:hover span{color:var(--bg)}
+
+#index{grid-column:1/-1;overflow-y:auto;min-height:0;padding-bottom:40px}
+.ixbar{display:grid;grid-template-columns:minmax(220px,290px) minmax(0,1fr) auto;gap:36px;align-items:baseline;margin-bottom:44px;text-transform:uppercase}
+#q{width:100%;border:0;border-bottom:1px solid var(--ink);background:none;padding:2px 0;border-radius:0;text-transform:none}
+#q::placeholder{color:var(--mute)}
+#q:focus{outline:0;border-bottom-width:2px}
+#ixn{color:var(--mute)}
+.sec{display:grid;grid-template-columns:minmax(220px,290px) minmax(0,1fr);gap:36px;margin-bottom:40px}
+.sec>h2{text-transform:uppercase}
+.sec>h2 small{display:block;font-size:inherit;color:var(--mute)}
+.cols{columns:3 240px;column-gap:36px}
+.cols .grp{break-inside:avoid}
+.hit{display:grid;grid-template-columns:5ch minmax(0,1.1fr) minmax(0,1.4fr);gap:0 14px;width:100%;padding:2px 0;border-top:1px solid var(--line)}
+.hit span:first-child,.hit span:last-child{color:var(--mute)}
+.hit:hover span{color:var(--mute)}
+.hit em{font-style:normal;color:var(--mute)}
+
+.ver{display:grid;grid-template-columns:5ch 14ch minmax(0,1fr);gap:0 14px;padding:2px 0;border-top:1px solid var(--line)}
+.ver span:nth-child(2){color:var(--mute)}
+@media (max-width:980px){
+  html,body{height:auto}
+  .app{height:auto;display:block}
+  main{display:block;padding-top:28px}
+  .col{overflow:visible;padding-bottom:36px}
+  .stagewrap{display:block;margin-bottom:36px}
+  .stage{height:540px;margin:12px 0}
+  .tools label{margin-left:0}
+  .ixbar,.sec{display:block}
+  .ixbar>*,.sec>h2{margin-bottom:14px}
+  .hit{grid-template-columns:5ch 1fr}
+  .hit span:last-child{grid-column:2}
+}
+
+/* ---------- simplified OS mockups (own fixed palette) ---------- */
+.scn{position:absolute;inset:0;border-radius:35px;background:#f4f5f7;color:#1b1f24;font:400 10px/1.3 var(--body);overflow:hidden;--ua:#3b6cf6;--ul:#e3e6ea;--um:#8a919c}
+.scn *{box-sizing:border-box}
+[hidden]{display:none!important}
+.scn i,.scn em,.scn u{font-style:normal;text-decoration:none}
+.wp{background:linear-gradient(160deg,#27407a,#6a4c93 55%,#e07a5f);color:#fff}
+.sb{height:34px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;font-size:10px;position:relative;z-index:3}
+.sb b{font-weight:600}
+.isl{position:absolute;left:50%;top:6px;width:66px;height:22px;margin-left:-33px;border-radius:12px;background:#000;color:#fff;font:500 8px var(--mono);display:flex;align-items:center;justify-content:space-between;padding:0 7px;transition:width .3s}
+.isl.live{width:120px;margin-left:-60px}
+.isl.live::before{content:"";width:8px;height:8px;border-radius:50%;background:#ff9f1c}
+.isl.live::after{content:"04:32";color:#ff9f1c}
+.sbi{display:flex;gap:4px;align-items:center}
+.sig{width:10px;height:8px;background:linear-gradient(90deg,currentColor 2px,transparent 2px 3px,currentColor 3px 5px,transparent 5px 6px,currentColor 6px 8px,transparent 8px);clip-path:polygon(0 60%,100% 0,100% 100%,0 100%)}
+.wifi{width:9px;height:8px;background:currentColor;clip-path:polygon(50% 100%,0 25%,25% 5%,50% 0,75% 5%,100% 25%)}
+.bat{width:17px;height:8px;border:1px solid currentColor;border-radius:2.5px;background:linear-gradient(90deg,currentColor 70%,transparent 70%);background-clip:content-box;padding:1px}
+.hi{position:absolute;left:50%;bottom:6px;width:86px;height:4px;margin-left:-43px;border-radius:3px;background:currentColor;opacity:.75;z-index:6}
+
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px 0;padding:6px 12px}
+.appi{display:grid;justify-items:center;gap:3px;font-size:8px;position:relative}
+.ic{width:38px;height:38px;border-radius:11px;background:var(--c,#888);position:relative;display:block}
+.bdg{position:absolute;right:-4px;top:-4px;min-width:14px;height:14px;border-radius:7px;background:#e5383b;color:#fff;font:600 8px/14px var(--body);text-align:center;padding:0 3px}
+.fold{width:38px;height:38px;border-radius:11px;background:rgba(255,255,255,.3);display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:6px}
+.fold i{border-radius:3px;background:#fff;opacity:.85}
+.wdg{grid-column:span 2;grid-row:span 2;margin:0 6px;border-radius:16px;background:rgba(255,255,255,.22);padding:9px;display:grid;align-content:space-between}
+.wdg b{font:700 24px/1 var(--display)}
+.dots{display:flex;gap:4px;justify-content:center;position:absolute;bottom:108px;left:50%;transform:translateX(-50%);padding:3px 6px;border-radius:8px}
+.dots i{width:5px;height:5px;border-radius:50%;background:#fff;opacity:.4}.dots i.on{opacity:1}
+.srch{position:absolute;bottom:84px;left:50%;transform:translateX(-50%);padding:3px 14px;border-radius:12px;background:rgba(255,255,255,.25);font-size:9px}
+.dock{position:absolute;left:10px;right:10px;bottom:16px;height:58px;border-radius:22px;background:rgba(255,255,255,.25);display:flex;justify-content:space-around;align-items:center}
+
+.lockc{text-align:center;padding-top:10px}
+.lk{display:inline-block;width:14px;height:11px;border-radius:3px;background:#fff;position:relative;margin-top:8px;padding:0}
+.lk::before{content:"";position:absolute;left:3px;top:-7px;width:8px;height:9px;border:2px solid #fff;border-bottom:0;border-radius:5px 5px 0 0}
+.lockc h3{font:700 58px/1 var(--display);margin:14px 0 0}
+.ncard{margin:8px 12px;padding:8px 10px;border-radius:14px;background:rgba(255,255,255,.9);color:#1b1f24;text-align:left;display:grid;gap:2px}
+.ncard small{color:var(--um);font-size:8px;display:flex;justify-content:space-between}
+.ncard b{font-weight:600}
+.lshort{position:absolute;left:24px;right:24px;bottom:28px;display:flex;justify-content:space-between;border-radius:20px}
+.lshort i{width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,.35);display:grid;place-items:center;font-size:7px}
+.aod{background:#000;color:#6d7480;text-align:center}
+.aod h3{font:500 54px/1 var(--display);margin:120px 0 4px}
+
+.dark{background:#161a22;color:#fff}
+.pn{padding:2px 12px;display:grid;gap:7px}
+.pn h4{margin:4px 2px 0;font:600 12px var(--display)}
+.dark .ncard{margin:0;background:#262c38;color:#fff}
+.media{display:grid;grid-template-columns:34px 1fr;gap:8px;align-items:center}
+.media .art{width:34px;height:34px;border-radius:7px;background:linear-gradient(135deg,#e07a5f,#6a4c93)}
+.bar{height:3px;border-radius:2px;background:rgba(128,128,128,.4);position:relative;margin-top:4px}
+.bar::after{content:"";position:absolute;inset:0 55% 0 0;border-radius:2px;background:var(--ua)}
+.nact{display:flex;gap:6px;margin-top:5px;border-radius:8px}
+.nact u{padding:3px 9px;border-radius:9px;background:rgba(128,128,128,.28);font-weight:500}
+.stack{position:relative}.stack::after{content:"";position:absolute;left:10px;right:10px;bottom:-5px;height:8px;border-radius:0 0 12px 12px;background:#20252f;z-index:-1}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.tile{height:42px;border-radius:14px;background:#262c38;padding:0 10px;display:flex;align-items:center;gap:7px;font-weight:500}
+.tile::before{content:"";width:16px;height:16px;border-radius:50%;background:#58627a}
+.tile.on{background:var(--ua)}.tile.on::before{background:#fff}
+.sl{height:26px;border-radius:13px;background:#262c38;position:relative;overflow:hidden;font-size:8px;display:flex;align-items:center;padding-left:10px}
+.sl::before{content:"";position:absolute;inset:0 40% 0 0;background:#dfe5f2;z-index:0}
+.sl span{position:relative;color:#161a22}
+.swc{position:absolute;inset:70px 0 60px;display:flex;align-items:center;justify-content:center}
+.swc div{width:128px;height:270px;border-radius:20px;background:#f4f5f7;box-shadow:0 10px 30px rgba(0,0,0,.5);margin:0 -34px;position:relative;color:#1b1f24;padding:26px 10px;display:grid;align-content:start;gap:6px}
+.swc div:nth-child(2){transform:scale(1.08);z-index:2}
+.swc div::before{content:attr(data-n);position:absolute;top:-16px;left:6px;color:#fff;font-weight:600}
+.swc p{margin:0;height:8px;border-radius:4px;background:var(--ul)}
+
+.tbar{height:36px;padding:0 12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--ul);background:#fff}
+.tbar b{font:700 13px var(--display);flex:1}
+.bk{width:9px;height:9px;border-left:2px solid var(--ua);border-bottom:2px solid var(--ua);transform:rotate(45deg);margin:0 4px 0 3px;padding:4px}
+.ibs{display:flex;gap:9px;padding:3px;border-radius:8px}
+.ibs i{width:15px;height:15px;border-radius:50%;border:2px solid #1b1f24}
+.ibs i+i{border-radius:3px}
+.sf{margin:8px 12px 0;height:26px;border-radius:13px;background:#e8eaee;color:var(--um);display:flex;align-items:center;padding:0 12px}
+.seg{margin:8px 12px;display:flex;border-radius:8px;background:#e8eaee;padding:2px}
+.seg b{flex:1;text-align:center;padding:3px 0;border-radius:6px;font-weight:500}.seg b.on{background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.15)}
+.lst{background:#fff;border-top:1px solid var(--ul)}
+.row{display:grid;grid-template-columns:26px 1fr auto;gap:8px;align-items:center;padding:7px 12px;border-bottom:1px solid var(--ul);background:#fff;position:relative}
+.row>i{width:26px;height:26px;border-radius:50%;background:var(--c,#c9ced6)}
+.row b{display:block;font-weight:600}.row span{color:var(--um)}
+.row small{color:var(--um);font-size:8px}
+.swr{background:#2a9d5c;border-bottom:1px solid var(--ul);position:relative}
+.swr .row{transform:translateX(-62px);border:0}
+.swr em{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:#fff;font-weight:600}
+.fab{position:absolute;right:14px;bottom:70px;width:42px;height:42px;border-radius:14px;background:var(--ua);color:#fff;font:400 24px/40px var(--body);text-align:center;box-shadow:0 4px 10px rgba(59,108,246,.45);z-index:2}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:56px;padding-bottom:12px;background:#fff;border-top:1px solid var(--ul);display:flex;justify-content:space-around;align-items:center;font-size:8px;color:var(--um);z-index:2}
+.tabbar span{display:grid;justify-items:center;gap:2px;position:relative}
+.tabbar span::before{content:"";width:16px;height:16px;border-radius:5px;background:currentColor}
+.tabbar .on{color:var(--ua)}
+.tabbar .bdg{right:-7px;top:-5px}
+.dim{position:absolute;inset:0;background:rgba(10,12,18,.45);z-index:4}
+.bnr{position:absolute;left:8px;right:8px;top:36px;z-index:5;margin:0;box-shadow:0 8px 22px rgba(0,0,0,.28)}
+.sheet{position:absolute;left:0;right:0;bottom:0;border-radius:20px 20px 0 0;background:#fff;z-index:5;padding:8px 12px 22px;display:grid;gap:9px}
+.grab{width:34px;height:4px;border-radius:2px;background:#c9ced6;justify-self:center}
+.hrow{display:flex;gap:11px}
+.hrow span{display:grid;justify-items:center;gap:3px;font-size:8px}
+.hrow i{width:36px;height:36px;border-radius:50%;background:var(--c,#c9ced6)}
+.hrow.sq i{border-radius:10px}
+.acts{border-radius:10px;background:#f1f2f5}
+.acts u{display:block;padding:7px 10px;border-bottom:1px solid var(--ul)}.acts u:last-child{border:0}
+.alert{position:absolute;left:22px;right:22px;top:160px;border-radius:16px;background:#fff;z-index:5;text-align:center;overflow:hidden}
+.alert b{display:block;padding:14px 14px 4px;font:700 12px/1.25 var(--display)}
+.alert p{margin:0;padding:0 14px 12px;color:var(--um)}
+.alert u{display:block;padding:8px;border-top:1px solid var(--ul);color:var(--ua);font-weight:500}
+.chat{padding:10px 12px;display:grid;gap:6px}
+.bub{max-width:70%;padding:6px 9px;border-radius:13px;background:#e8eaee}
+.bub.me{justify-self:end;background:var(--ua);color:#fff}
+.kbwrap{position:absolute;left:0;right:0;bottom:0;z-index:2}
+.emenu{width:max-content;margin:0 0 5px 18px;padding:4px 3px;border-radius:8px;background:#1b1f24;color:#fff;display:flex}
+.emenu u{padding:0 7px;border-right:1px solid #444}.emenu u:last-child{border:0}
+.inp{margin:0 10px 6px;height:28px;border-radius:14px;border:1px solid #c9ced6;background:#fff;display:flex;align-items:center;padding:0 12px}
+.inp mark{background:#bcd0ff;color:inherit}
+.inp::after{content:"";width:1.5px;height:13px;background:var(--ua);margin-left:1px}
+.sug{display:flex;background:#d5d8de;border-radius:6px 6px 0 0}
+.sug u{flex:1;text-align:center;padding:5px 0;border-right:1px solid #bfc3cb}.sug u:last-child{border:0}
+.kb{background:#d5d8de;padding:4px 3px 20px;display:grid;gap:5px}
+.kr{display:flex;gap:3px;justify-content:center}
+.kr u{width:20px;height:26px;border-radius:4px;background:#fff;display:grid;place-items:center;box-shadow:0 1px 0 #999;font-size:10px}
+.kr u.w{width:32px;background:#b3b8c2}.kr u.sp{width:104px}.kr u.rt{width:44px;background:var(--ua);color:#fff;font-size:8px}
+.paysum{display:flex;justify-content:space-between;font-weight:600;font-size:12px}
+.cardv{height:34px;border-radius:8px;background:linear-gradient(120deg,#27407a,#6a4c93);color:#fff;display:flex;align-items:center;padding:0 10px}
+.bio{justify-self:center;display:grid;justify-items:center;gap:4px;color:var(--um);padding:4px 10px;border-radius:10px}
+.bio i{width:34px;height:34px;border-radius:50%;border:2px solid var(--ua);background:repeating-radial-gradient(circle,transparent 0 3px,rgba(59,108,246,.5) 3px 4px)}
+.form{padding:6px 12px;display:grid;gap:5px}
+.fr{min-height:30px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-radius:8px;padding:0 2px}
+.tf{height:34px;border:1.5px solid var(--ua);border-radius:8px;padding:3px 9px;display:grid;background:#fff}
+.tf small{font-size:7px;color:var(--ua)}
+.chips{display:flex;gap:5px;border-radius:10px}
+.chips u{padding:3px 9px;border-radius:10px;border:1px solid #b9bfc9}.chips u.on{background:#dbe5ff;border-color:var(--ua)}
+.tog{width:32px;height:19px;border-radius:10px;background:var(--ua);position:relative}.tog::after{content:"";position:absolute;right:2px;top:2px;width:15px;height:15px;border-radius:50%;background:#fff}
+.cbs{display:flex;gap:12px;border-radius:8px}
+.cb{display:flex;gap:5px;align-items:center}
+.cb::before{content:"";width:13px;height:13px;border-radius:3px;border:1.5px solid #7b8492}
+.cb.on::before{background:var(--ua);border-color:var(--ua);box-shadow:inset 0 0 0 2px #fff}
+.rd::before{border-radius:50%}
+.rng{flex:1;height:4px;border-radius:2px;background:linear-gradient(90deg,var(--ua) 45%,#c9ced6 45%);position:relative;margin:0 4px}
+.rng::after{content:"";position:absolute;left:45%;top:-6px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.4);margin-left:-8px}
+.stp{display:flex;border:1px solid #b9bfc9;border-radius:7px;overflow:hidden}
+.stp u{width:24px;text-align:center;line-height:20px}.stp u+u{border-left:1px solid #b9bfc9}
+.btns{display:flex;gap:6px;border-radius:10px;margin-top:2px}
+.btns u{padding:6px 12px;border-radius:14px;font-weight:600;color:var(--ua)}
+.btns .f{background:var(--ua);color:#fff}.btns .o{border:1px solid var(--ua)}
+.menu{position:absolute;right:10px;top:66px;width:96px;border-radius:10px;background:#fff;box-shadow:0 6px 22px rgba(0,0,0,.28);z-index:5}
+.menu u{display:block;padding:7px 10px;border-bottom:1px solid var(--ul)}.menu u:last-child{border:0;color:#d62839}
+.lin{height:3px;background:linear-gradient(90deg,var(--ua) 40%,#cdd6ee 40%)}
+.sk{display:grid;grid-template-columns:44px 1fr;gap:9px;padding:9px 12px;border-radius:8px}
+.sk i{height:44px;border-radius:8px;background:#e1e4e9}
+.sk p{margin:0;display:grid;gap:6px;align-content:center}
+.sk p::before,.sk p::after{content:"";height:8px;border-radius:4px;background:#e1e4e9}.sk p::after{width:60%}
+.spin{width:26px;height:26px;border-radius:50%;border:3px solid #cdd6ee;border-top-color:var(--ua);margin:12px auto;animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.snack{position:absolute;left:10px;right:10px;bottom:24px;border-radius:8px;background:#2a2f39;color:#fff;padding:9px 12px;display:flex;justify-content:space-between;z-index:3}
+.snack u{color:#9db8ff;font-weight:600}
+.st{position:absolute;inset:70px 0 0;display:grid;place-content:center;justify-items:center;text-align:center;gap:6px;padding:0 30px}
+.st i{width:60px;height:60px;border-radius:50%;background:#e1e4e9;display:grid;place-items:center;font:700 26px var(--display);color:#7b8492}
+.st b{font:700 14px var(--display)}.st span{color:var(--um)}
+.st u{margin-top:6px;padding:6px 14px;border-radius:14px;background:var(--ua);color:#fff;font-weight:600}
+.offb{background:#444b57;color:#fff;text-align:center;padding:4px;font-size:9px}
+
+
+/* v2 additions */
+.xn{font:500 11px var(--mono);color:var(--mute);border:1px dashed var(--mute);border-radius:6px;padding:2px 8px;justify-self:start}
+.jack{position:absolute;width:11px;height:11px;border-radius:50%;background:#0b0c0f;box-shadow:0 0 0 1px #4d535c}
+.led{position:absolute;left:calc(50% - 36px);top:15px;width:5px;height:5px;border-radius:50%;background:#35d07f;z-index:9}
+.safe{position:absolute;inset:38px 7px 24px;border:1.5px dashed rgba(255,255,255,.4);border-radius:24px}
+.phone .safe{pointer-events:none}
+.fgw{position:absolute;inset:0;z-index:20;pointer-events:none}
+.fg{position:absolute;left:0;top:0;width:30px;height:30px;margin:-15px;border-radius:50%;background:rgba(255,122,0,.45);border:2px solid #ff7a00;transform:translate(var(--x0),var(--y0));animation:var(--a) 2.2s infinite ease-in-out}
+.fg.st{animation:none}
+.orb{position:absolute;left:120px;top:255px;animation:orb 2.6s infinite ease-in-out}
+@keyframes orb{0%,100%{transform:rotate(-30deg)}50%{transform:rotate(45deg)}}
+@keyframes mv{0%{transform:translate(var(--x0),var(--y0)) scale(.6);opacity:0}15%{transform:translate(var(--x0),var(--y0));opacity:1}70%{transform:translate(var(--x1),var(--y1));opacity:1}85%,100%{transform:translate(var(--x1),var(--y1)) scale(1.3);opacity:0}}
+@keyframes fling{0%{transform:translate(var(--x0),var(--y0));opacity:0}10%{transform:translate(var(--x0),var(--y0));opacity:1}35%{transform:translate(var(--x1),var(--y1));opacity:.3}45%,100%{transform:translate(var(--x1),var(--y1));opacity:0}}
+@keyframes tp{0%,100%{transform:translate(var(--x0),var(--y0)) scale(1.6);opacity:0}30%{transform:translate(var(--x0),var(--y0)) scale(1);opacity:1}42%{transform:translate(var(--x0),var(--y0)) scale(.75);opacity:1}60%{transform:translate(var(--x0),var(--y0)) scale(1.5);opacity:0}}
+@keyframes tp2{0%,100%{transform:translate(var(--x0),var(--y0)) scale(1.5);opacity:0}15%{transform:translate(var(--x0),var(--y0)) scale(.75);opacity:1}28%{transform:translate(var(--x0),var(--y0)) scale(1.3);opacity:0}40%{transform:translate(var(--x0),var(--y0)) scale(.75);opacity:1}55%{transform:translate(var(--x0),var(--y0)) scale(1.5);opacity:0}}
+@keyframes hold{0%{transform:translate(var(--x0),var(--y0)) scale(.7);opacity:0}15%{transform:translate(var(--x0),var(--y0)) scale(1);opacity:1;box-shadow:0 0 0 0 rgba(255,122,0,.5)}80%{transform:translate(var(--x0),var(--y0)) scale(1);opacity:1;box-shadow:0 0 0 16px rgba(255,122,0,.25)}100%{transform:translate(var(--x0),var(--y0)) scale(1.3);opacity:0}}
+@keyframes dnd{0%{transform:translate(var(--x0),var(--y0)) scale(.7);opacity:0}10%{transform:translate(var(--x0),var(--y0));opacity:1}38%{transform:translate(var(--x0),var(--y0)) scale(1.35);opacity:1}80%{transform:translate(var(--x1),var(--y1)) scale(1.35);opacity:1}100%{transform:translate(var(--x1),var(--y1)) scale(.8);opacity:0}}
+@media (prefers-reduced-motion: reduce){.fg,.orb,.mot i{animation:none!important}}
+.pdot{width:5px;height:5px;border-radius:50%;background:#35d07f}
+.scn.oneh{transform:translateY(200px)}
+.scn.dkm{filter:invert(1) hue-rotate(180deg)}
+.scn.big .lst{zoom:1.45}
+.scn.weak .sig,.scn.weak .wifi{opacity:.25}
+.mp{position:absolute;inset:0;background:linear-gradient(115deg,transparent 48%,#fff 48% 52%,transparent 52%),linear-gradient(20deg,transparent 46%,#fff 46% 49%,transparent 49%),linear-gradient(80deg,transparent 60%,#ffe9a8 60% 63%,transparent 63%),radial-gradient(circle at 70% 30%,#bfe0b5 0 60px,transparent 61px),radial-gradient(circle at 20% 75%,#a9d3f2 0 70px,transparent 71px),#e9ecdf}
+.pin{position:absolute;left:112px;top:240px;width:16px;height:16px;border-radius:50% 50% 50% 0;background:#d62839;transform:rotate(-45deg)}
+.cmp{position:absolute;right:12px;top:84px;width:30px;height:30px;border-radius:50%;background:#fff;display:grid;place-items:center;font-weight:700;color:#d62839;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.mapsf{position:relative;z-index:2;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.asst{position:absolute;left:14px;right:14px;bottom:26px;z-index:5;border-radius:22px;background:rgba(20,24,34,.94);color:#fff;padding:14px;display:grid;justify-items:center;gap:5px;text-align:center}
+.asst i{width:40px;height:40px;border-radius:50%;background:conic-gradient(#3b6cf6,#e07a5f,#6a4c93,#3b6cf6)}
+.asst small{opacity:.7}
+.vf{position:absolute;inset:44px 12px 110px;border-radius:18px;background:linear-gradient(160deg,#39424f,#1e242d);display:grid;place-items:center;align-content:center;gap:12px}
+.qr{width:96px;height:96px;border:3px solid #ffd60a;border-radius:10px;background:repeating-conic-gradient(#fff 0 25%,#111 0 50%) 0 0/24px 24px}
+.lt{background:#ffd60a;color:#111;padding:4px 10px;border-radius:10px;font-weight:600}
+.shut{position:absolute;left:50%;bottom:36px;width:52px;height:52px;margin-left:-26px;border-radius:50%;border:4px solid #fff}
+.rdr{position:absolute;left:10px;right:10px;bottom:150px;z-index:5;background:#111;color:#fff;border-radius:10px;padding:8px 10px;font-size:11px}
+.rfocus{position:absolute;left:121px;top:36px;width:52px;height:60px;border:3px solid #111;outline:2px solid #fff;border-radius:10px;z-index:4}
+.cnv{margin:10px 12px;height:330px;border-radius:12px;background:#fff;border:1px solid var(--ul)}
+.pens{display:flex;gap:10px;justify-content:center;border-radius:8px}
+.pens i{width:14px;height:44px;border-radius:7px 7px 2px 2px;background:var(--c)}
+.tw{border-radius:16px;background:rgba(255,255,255,.22);padding:10px;min-height:74px;display:grid;align-content:space-between}
+.tw b{font:700 16px var(--display)}
+.half{height:214px;margin:0 6px;border-radius:14px;background:#f4f5f7;color:#1b1f24;overflow:hidden;position:relative}
+.splitbar{display:block;width:40px;height:4px;border-radius:2px;background:#fff;margin:6px auto}
+.pipv{position:absolute;right:10px;bottom:140px;width:110px;height:64px;border-radius:10px;background:linear-gradient(135deg,#1e242d,#4a5568);z-index:5;display:grid;place-items:center;box-shadow:0 6px 18px rgba(0,0,0,.45)}
+.pipv i{border-left:14px solid #fff;border-top:9px solid transparent;border-bottom:9px solid transparent}
+.pm{position:absolute;inset:90px 22px auto;display:grid;gap:14px}
+.pslide{height:46px;border-radius:23px;background:#2a303c;display:flex;align-items:center;gap:10px;padding:0 6px;font-weight:500}
+.pslide::before{content:"";width:34px;height:34px;border-radius:50%;background:#fff}
+.pslide.sos::before{background:#e5383b}
+.pcancel{position:absolute;bottom:40px;left:0;right:0;text-align:center}
+.volp{position:absolute;right:8px;top:120px;width:30px;height:150px;border-radius:15px;background:#fff;box-shadow:0 4px 16px rgba(0,0,0,.3);z-index:5;overflow:hidden;display:flex;align-items:flex-end}
+.volp i{width:100%;height:60%;background:var(--ua)}
+.wpp{display:flex;gap:8px;justify-content:center;margin:8px 0;border-radius:14px}
+.wpp i{width:62px;height:130px;border-radius:12px;display:block}
+.tcol{display:flex;gap:10px;justify-content:center;padding:6px;border-radius:12px}
+.tcol i{width:24px;height:24px;border-radius:50%;background:var(--c)}
+.menu.qa{top:92px;right:22px;width:118px}
+.srow{padding:0 12px;min-height:30px;border-bottom:1px solid var(--ul);background:#fff;border-radius:0}
+.srow span+span{color:var(--um)}
+.tog.off{background:#c9ced6}.tog.off::after{right:auto;left:2px}
+.pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}
+.pgrid i{aspect-ratio:1;border-radius:4px;background:var(--c)}
+.afill{background:#eef2ff;border-top:1px solid #c7d2fe;padding:7px 10px;display:flex;justify-content:space-between;font-weight:500;color:#27407a}
+.sgn{display:grid;gap:6px;border-radius:10px}
+.sgn u{padding:8px;border-radius:10px;background:#1b1f24;color:#fff;text-align:center;font-weight:600}
+.sgn u+u{background:#fff;color:#1b1f24;border:1px solid #b9bfc9}
+.stars{letter-spacing:4px;font-size:18px;color:#f4b400;padding-bottom:10px}
+.emo{display:grid;grid-template-columns:repeat(8,1fr);gap:7px;padding:8px 8px 6px;background:#d5d8de}
+.emo i{aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 35% 40%,#222 0 1.5px,transparent 2px),radial-gradient(circle at 65% 40%,#222 0 1.5px,transparent 2px),#ffcc33}
+.cpill{justify-self:center;background:#2a2f39;color:#fff;padding:3px 10px;border-radius:10px;font-size:8px}
+.recp{position:absolute;left:14px;top:9px;z-index:6;background:#e5383b;color:#fff;font:600 8px var(--mono);padding:2px 6px;border-radius:8px}
+.shotp{position:absolute;left:10px;bottom:70px;width:62px;height:120px;border-radius:8px;background:#fff;border:3px solid #fff;box-shadow:0 6px 18px rgba(0,0,0,.4);z-index:6}
+.shotp i{display:block;height:100%;border-radius:5px;background:linear-gradient(#cfd5de 20%,#eef0f3 20%)}
+.wst{padding:40px 14px 0;display:grid}
+.wst .cardv{height:70px;border-radius:12px;align-items:flex-start;padding-top:8px;margin-top:-34px;box-shadow:0 -2px 8px rgba(0,0,0,.3)}
+.pass{margin:10px 14px;border-radius:12px;background:#fff;color:#1b1f24;padding:10px}
+.dark .bio{color:#c6ccd6}
+.callb{position:absolute;left:30px;right:30px;bottom:50px;display:flex;justify-content:space-between}
+.callb i{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:8px;background:#e5383b}
+.callb .acc{background:#2a9d5c}
+.dark .st i{background:#3a4150;color:#fff}.dark .st span{color:#aab2c0}
+.ndraw{position:absolute;left:0;top:0;bottom:0;width:170px;background:#fff;z-index:5;padding:44px 0 0;border-radius:35px 16px 16px 35px}
+.ndraw b{display:block;padding:0 16px 10px;font:700 15px var(--display)}
+.ndraw u{display:block;margin:2px 8px;padding:8px 10px;border-radius:18px}
+.ndraw u.on{background:#dbe5ff;color:#27407a;font-weight:600}
+.shead{display:flex;justify-content:space-between;padding:8px 12px 4px}
+.shead b{font:700 12px var(--display)}
+.scn .lnk{color:var(--ua);text-decoration:underline}
+.car{display:flex;gap:8px;margin:0 12px;overflow:hidden;border-radius:12px}
+.scn .cd{flex:0 0 118px;height:80px;border-radius:12px;background:linear-gradient(160deg,#27407a,#6a4c93);color:#fff;padding:8px;display:grid;align-content:end}
+.cd b{display:block}
+.scn hr{border:0;border-top:1.5px solid #c9ced6;margin:12px 12px 4px}
+.tgr{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:0 12px;border-radius:8px}
+.tgr i{height:42px;border-radius:8px;background:var(--c);display:block}
+.xp{margin:10px 12px 0;padding:0 10px;background:#fff;border:1px solid var(--ul)}
+.chev{width:7px;height:7px;border-right:2px solid #7b8492;border-bottom:2px solid #7b8492;transform:rotate(45deg)}
+.tbr{position:absolute;left:0;right:0;bottom:0;height:54px;padding-bottom:12px;background:#fff;border-top:1px solid var(--ul);display:flex;justify-content:space-around;align-items:center}
+.tbr i{width:16px;height:16px;border-radius:4px;border:2px solid var(--ua)}
+.tip{position:absolute;right:38px;top:42px;background:#2a2f39;color:#fff;padding:3px 8px;border-radius:6px;z-index:4}
+.whl{margin:14px 30px;height:120px;border-radius:12px;background:linear-gradient(transparent 36%,#e8eaee 36% 64%,transparent 64%),#fff;display:grid;grid-template-columns:1fr 1fr;text-align:center;font:500 17px var(--display);align-content:center;gap:10px 0}
+.whl b{opacity:.3;font-weight:500}.whl b.c{opacity:1}
+.cpk{margin:14px 20px;padding:10px;border-radius:12px;background:#fff;display:grid;gap:8px}
+.sw6{display:flex;gap:6px}.sw6 i{flex:1;height:24px;border-radius:6px;background:var(--c)}
+.hue{height:12px;border-radius:6px;background:linear-gradient(90deg,red,#ff0,#0f0,#0ff,#00f,#f0f,red);display:block}
+.toast{position:absolute;left:50%;transform:translateX(-50%);bottom:74px;background:rgba(40,44,52,.92);color:#fff;padding:5px 12px;border-radius:14px;z-index:3;white-space:nowrap}
+.fnd{padding:6px 12px;display:grid;gap:6px}
+.fnd>div{background:#fff;border-radius:10px;padding:6px 10px;border:1px solid var(--ul)}
+.fnd small{display:block;color:var(--um);font-size:7px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+.icr,.spc,.elv{display:flex;gap:10px;flex-wrap:wrap}
+.icr small,.spc small,.elv small{flex:0 0 100%;margin:0}
+.icr i{width:18px;height:18px;border:2px solid #1b1f24}
+.spc i{flex:1;height:18px;background:#dbe5ff;outline:1px dashed #e5383b;outline-offset:4px;margin:4px 0}
+.tgt i{display:inline-grid;place-items:center;width:44px;height:44px;border:1.5px dashed #e5383b;border-radius:8px;font-size:7px;text-align:center;line-height:1.1}
+.elv i{flex:1;height:22px;border-radius:8px;background:#fff;margin:2px 0 6px}
+.mot{position:relative;height:40px}
+.mot i{position:absolute;left:10px;bottom:7px;width:12px;height:12px;border-radius:50%;background:var(--ua);animation:mo 1.6s cubic-bezier(.2,.8,.2,1) infinite alternate}
+@keyframes mo{to{left:calc(100% - 22px)}}
+.cst{padding:14px 12px;display:grid;grid-template-columns:1fr 1fr;gap:14px 10px}
+.cst u{padding:9px 0;border-radius:16px;background:var(--ua);color:#fff;text-align:center;font-weight:600;min-height:31px}
+.cst .pr{filter:brightness(.72);transform:scale(.95)}
+.cst .fo{outline:2px solid #1b1f24;outline-offset:2px}
+.cst .se{background:#dbe5ff;color:#27407a}
+.cst .di{background:#e1e4e9;color:#9aa1ad}
+.cst .dr{box-shadow:0 8px 16px rgba(0,0,0,.3);transform:rotate(-3deg) translateY(-3px)}
+.spin.sm{width:13px;height:13px;border-width:2px;margin:0 auto;border-color:rgba(255,255,255,.4);border-top-color:#fff}
+.tf.er{grid-column:span 2;border-color:#d62839;height:auto}
+.tf.er small,.tf.er em{color:#d62839}.tf.er em{font-size:8px}
+
+.scn .menu,.scn .alert,.scn .sheet,.scn .ndraw,.scn .tip+.shead{color:#1b1f24}
+.scn .alert u{color:var(--ua)}
+
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand"><span id="num">001</span><span>Phone Anatomy Lab</span><span>v5</span></div>
+    <nav class="modes" aria-label="Section">
+      <button class="b" id="m-hw">Hardware</button>
+      <button class="b" id="m-in">Input</button>
+      <button class="b" id="m-sw">Software</button>
+      <button class="b" id="m-ix">Index</button>
+    </nav>
+  </header>
+  <main id="main">
+    <section class="col" id="detail" aria-live="polite"></section>
+    <section class="stagewrap" id="stagewrap">
+      <div class="devs" id="devs" role="group" aria-label="Device"></div>
+      <div class="stage hw" id="stage" aria-label="3D model">
+        <canvas id="gl" aria-hidden="true"></canvas>
+        <div class="css3d" id="css3d"><div class="cam3d" id="cam3d"><div id="screen"></div></div></div>
+        <div id="tags"></div>
+        <div class="pinpt" id="pin"><i></i></div>
+        <div class="glerr" id="glerr" hidden></div>
+        <div class="callout" id="callout"></div>
+        <div class="hint">Drag to rotate / click a part</div>
+      </div>
+      <div class="tools" id="tools">
+        <button class="b" data-view="front">Front</button>
+        <button class="b hwtool" data-view="back">Back</button>
+        <button class="b hwtool" data-view="explode">Exploded</button>
+        <label class="hwtool" for="ex">Explode <input type="range" id="ex" min="0" max="100" value="0"></label>
+      </div>
+    </section>
+    <section class="col" id="side"><dl id="meta"></dl><div id="groups"></div></section>
+    <section id="index" hidden>
+      <div class="ixbar"><label for="q">Search</label><input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="type a rough guess: hart rate, notifcation, swipe, wifi"><span id="ixn"></span></div>
+      <div id="ixres"></div>
+      <div class="sec" id="versions"><h2>Versions<small>5 releases</small></h2><div>
+        <div class="ver"><span>v5</span><span>22 Nov 2026</span><span>Version list added. Published on GitHub Pages.</span></div>
+        <div class="ver"><span>v4</span><span>21 Nov 2026</span><span>Watch, ring, glasses and earbud models. Index mode with approximate search. Monospace archive restyle. 282 entries.</span></div>
+        <div class="ver"><span>v3</span><span>21 Nov 2026</span><span>Phone rebuilt as a WebGL model with studio lighting and physically based materials.</span></div>
+        <div class="ver"><span>v2</span><span>18 Nov 2026</span><span>Input mode with animated gestures. Remaining system surfaces, components and states. 211 entries.</span></div>
+        <div class="ver"><span>v1</span><span>18 Nov 2026</span><span>First release. 3D phone with hardware and software modes. 91 entries.</span></div>
+      </div></div>
+    </section>
+  </main>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ---------- data ----------
+const HW = [
+ ["Front",[
+  {id:"glass",n:"Cover glass",d:"Strengthened glass that protects the display. Its coating is the surface your finger slides on.",t:"Tilt your phone under a light. Find the seam where glass meets frame."},
+  {id:"display",n:"Display panel",d:"The OLED or LCD layer that makes the image. Every pixel is lit and coloured here.",t:"Open Settings > Display. What resolution and refresh rate does your phone list?"},
+  {id:"touch",n:"Touch sensor",d:"A transparent capacitive grid bonded to the display. It reads where your skin disturbs its electric field.",t:"Tap with a fingernail, then a fingertip. Why does only one register?"},
+  {id:"frontcam",n:"Front camera",d:"The selfie camera, behind a notch, punch-hole or pill cutout. Face unlock sensors often sit beside it.",t:"Which cutout shape does your phone have? How does the status bar arrange itself around it?"},
+  {id:"earpiece",n:"Earpiece speaker",d:"The thin slot at the top edge for calls. On most phones it is also the second stereo speaker.",t:"Play music and cover the bottom speaker. Is there still sound from the top?"},
+  {id:"prox",n:"Proximity and light sensors",d:"Hidden near the front camera. One turns the screen off against your ear; the other drives auto-brightness.",t:"During a call, cover the top of the screen with your hand. What happens?"},
+  {id:"fingerprint",n:"Fingerprint reader",d:"An optical or ultrasonic sensor under the display, or a capacitive one in the power button. Phones with only face unlock have none.",t:"Where is yours: under the screen, on the side, on the back, or absent?"}]],
+ ["Frame and edges",[
+  {id:"frame",n:"Frame",d:"The aluminium, steel or titanium band that holds every layer together and doubles as the antenna.",t:"What is your frame made of? Is it flat or curved?"},
+  {id:"antenna",n:"Antenna bands",d:"Thin plastic breaks in the metal frame that let radio signals through.",t:"Count the breaks around your frame."},
+  {id:"power",n:"Power / side button",d:"Wakes, locks and powers off. Double-press and long-press are mapped to things like wallet, camera or the assistant.",t:"Try a press, a double-press and a long-press. List what each one does."},
+  {id:"volume",n:"Volume buttons",d:"Change volume and act as a camera shutter. Combined with power they take screenshots or open the power menu.",t:"Which button combination takes a screenshot on your phone?"},
+  {id:"action",n:"Mute switch or action key",d:"A switch or programmable key above the volume buttons. Many phones do not have one.",t:"Does your phone have one? What is it set to do?"},
+  {id:"sim",n:"SIM tray",d:"Holds the physical SIM card and opens with a pin. eSIM-only phones have no tray.",t:"Find the tray and its pinhole, or confirm your phone is eSIM only."},
+  {id:"usbc",n:"Charging port",d:"USB-C on current phones, Lightning on older iPhones. It carries power, data, audio and video.",t:"What can you plug into yours besides a charger?"},
+  {id:"speaker",n:"Loudspeaker",d:"The main speaker module, firing through the grille beside the port.",t:"Which grille holes make sound? One side is often only a microphone."},
+  {id:"mic",n:"Microphones",d:"Phones carry two to four: bottom for calls, top and rear for noise cancelling and video.",t:"Find every pinhole on your phone that is not the SIM eject hole."}]],
+ ["Inside",[
+  {id:"soc",n:"Processor (system on chip)",d:"CPU, graphics and AI processing in one chip. It decides how fast the phone feels.",t:"Look up which chip your phone uses."},
+  {id:"storage",n:"Memory and storage",d:"RAM holds the apps that are open. Flash storage keeps your files when the phone is off.",t:"Open Settings > Storage. How much is used, and by what?"},
+  {id:"radios",n:"Radios",d:"The modem and antennas for cellular, Wi-Fi, Bluetooth and GPS; on some phones also ultra-wideband and satellite.",t:"Open your quick toggles. Which radios can you switch off there?"},
+  {id:"motion",n:"Motion sensors",d:"Accelerometer, gyroscope, compass and barometer. They drive screen rotation, step counting and raise to wake.",t:"Open a compass or level app. Rotate the phone and watch the values move."},
+  {id:"battery",n:"Battery",d:"A lithium-ion cell and the largest part inside. Capacity is measured in mAh.",t:"Open Settings > Battery. Find battery health or usage by app."},
+  {id:"haptic",n:"Haptic motor",d:"A linear motor that produces taps and vibrations. Good haptics feel like a click, weak ones like a buzz.",t:"Flip a switch in Settings with sound off. Can you feel it?"},
+  {id:"rearcams",n:"Rear cameras",d:"One to four modules with different lenses: wide, ultrawide, telephoto.",t:"Open the camera and change zoom while covering one lens at a time. Which lens takes over?"}]],
+ ["Back",[
+  {id:"coil",n:"Wireless charging coil",d:"A flat copper coil that receives power by induction from a charging pad.",t:"Does your phone charge wirelessly? Can it charge earbuds placed on its back?"},
+  {id:"magnets",n:"Magnet ring",d:"Magnets around the coil that align chargers and accessories (MagSafe, Qi2). Not every phone has them.",t:"Hold a paperclip to the back. Does it stick in a ring?"},
+  {id:"nfc",n:"NFC antenna",d:"A short-range antenna for tap to pay, transit cards and pairing.",t:"Where do you hold your phone against a payment terminal? The antenna sits there."},
+  {id:"back",n:"Back panel",d:"Glass lets wireless charging through; a metal back would block it.",t:"What is your back panel made of?"},
+  {id:"flash",n:"Flash / torch",d:"An LED beside the cameras.",t:"How many different ways can you turn on the torch?"},
+  {id:"depth",n:"Depth sensor",d:"A LiDAR or time-of-flight sensor on some phones, used for focus and AR measuring.",t:"Look for a dark dot in the camera bump that is not a lens."}]]
+];
+const SW = [
+ ["System surfaces",[
+  {id:"aod",n:"Always-on display",ios:"Always-On display",and:"Always-on display",s:"aod",d:"A dimmed screen shown while the phone sleeps, usually the time and a few alerts.",t:"Lock your phone and wait. What stays visible?"},
+  {id:"lock",n:"Lock screen",ios:"Lock Screen",and:"Lock screen",s:"lock",d:"The first screen after waking. It shows time, notifications and a few shortcuts without unlocking.",t:"What can a stranger do with your phone while it is locked?"},
+  {id:"unlock",n:"Unlock prompt",ios:"Face ID / Touch ID / passcode",and:"Biometric prompt, PIN, pattern",s:"lock",d:"The check that turns a locked phone into your phone. The padlock shows the current state.",t:"How many ways can you unlock your phone? Which is the fallback?"},
+  {id:"locknotif",n:"Lock screen notification",ios:"Lock Screen notification",and:"Lock screen notification",s:"lock",d:"An alert shown before unlock. Settings decide how much of its content is revealed.",t:"Send yourself a message. How much of it shows while locked?"},
+  {id:"lockshort",n:"Lock screen shortcuts",ios:"Lock Screen controls",and:"Lock screen shortcuts",s:"lock",d:"Buttons for torch, camera or other tools that work without unlocking.",t:"Which shortcuts does yours have? Can you change them?"},
+  {id:"home",n:"Home screen",ios:"Home Screen",and:"Home screen",s:"home",d:"The grid of apps and widgets you return to. Everything on it can be rearranged.",t:"Long-press an empty spot on your home screen. What mode opens?"},
+  {id:"status",n:"Status bar",ios:"Status bar",and:"Status bar",s:"home",d:"The strip at the top with time, signal, Wi-Fi and battery. Apps can tint it but not replace it.",t:"Name every icon in your status bar right now."},
+  {id:"island",n:"Camera cutout area",ios:"Dynamic Island / Live Activities",and:"Status bar chips / Live Updates (Samsung: Now bar)",s:"live",d:"The space around the front camera. Systems use it to show something in progress, such as a timer or a ride.",t:"Start a timer and go home. Where does it show?"},
+  {id:"widget",n:"Widget",ios:"Widget",and:"Widget",s:"home",d:"A live tile from an app, read at a glance without opening the app.",t:"Add a widget to your home screen. What sizes are offered?"},
+  {id:"folder",n:"Folder",ios:"Folder",and:"Folder",s:"home",d:"A group of apps made by dragging one icon onto another.",t:"Make a folder. How does the system name it?"},
+  {id:"badge",n:"App icon badge",ios:"Badge",and:"Notification dot / badge",s:"home",d:"A count or dot on an app icon that signals something unread.",t:"Which of your apps show a badge now? Is it a number or a dot?"},
+  {id:"pages",n:"Page indicator",ios:"Page control / Search pill",and:"Page indicator",s:"home",d:"Dots that show which home page you are on.",t:"How many home pages do you have?"},
+  {id:"search",n:"Device search",ios:"Spotlight",and:"Search bar (Samsung: Finder)",s:"home",d:"One field that searches apps, contacts, settings and the web.",t:"Search for a setting by name. Does it find it?"},
+  {id:"dock",n:"Dock",ios:"Dock",and:"Favorites tray / hotseat",s:"home",d:"The row of pinned apps that stays put across every home page.",t:"Swipe between home pages. What stays in place?"},
+  {id:"homebar",n:"Navigation bar",ios:"Home indicator",and:"Gesture handle or 3-button navigation",s:"home",d:"The bottom edge control for going home, back and to recent apps.",t:"Does your phone use gestures or three buttons? Can you switch?"},
+  {id:"drawer",n:"App list",ios:"App Library",and:"App drawer (Samsung: Apps screen)",s:"drawer",d:"Every installed app in one place, whether or not it is on the home screen.",t:"Find the full app list on your phone. How is it sorted?"},
+  {id:"shade",n:"Notification panel",ios:"Notification Center",and:"Notification shade",s:"shade",d:"The pull-down list of every alert you have not dismissed.",t:"Swipe down from the top. Which corner or gesture opens notifications?"},
+  {id:"quick",n:"Quick toggles",ios:"Control Center",and:"Quick Settings (Samsung: quick panel)",s:"quick",d:"Switches for Wi-Fi, Bluetooth, brightness and other settings you change often.",t:"Open it separately from notifications. How does the gesture differ?"},
+  {id:"focus",n:"Do Not Disturb",ios:"Focus",and:"Do Not Disturb / Modes",s:"quick",d:"A mode that silences alerts, with rules for who can break through.",t:"Turn it on. Which alerts still get through?"},
+  {id:"switcher",n:"App switcher",ios:"App Switcher",and:"Recents / Overview",s:"switcher",d:"Cards of recently used apps, for jumping between them or closing one.",t:"Open your recent apps. What gesture gets you there?"}]],
+ ["System moments",[
+  {id:"banner",n:"Notification banner",ios:"Banner",and:"Heads-up notification",s:"banner",d:"An alert that drops over whatever you are doing, then retreats.",t:"Have someone message you while you are in another app. What can you do to the banner?"},
+  {id:"ngroup",n:"Grouped notifications",ios:"Notification stack",and:"Notification group",s:"shade",d:"Several alerts from one app collapsed into a single stack.",t:"Find a stack in your notifications and expand it."},
+  {id:"nactions",n:"Notification actions",ios:"Notification actions",and:"Notification actions",s:"shade",d:"Buttons on an alert that let you reply or archive without opening the app.",t:"Find a notification you can act on without opening its app."},
+  {id:"ongoing",n:"Ongoing notification",ios:"Now Playing / Live Activity",and:"Ongoing notification / media controls",s:"shade",d:"An alert that stays while something is running: music, navigation, a call.",t:"Play music and open your notifications. Can you dismiss the player?"},
+  {id:"share",n:"Share sheet",ios:"Share sheet",and:"Sharesheet",s:"share",d:"The system panel for sending content to a person or an app. The app asks; the OS draws it.",t:"Share one photo. Which parts of the panel are the system's and which are apps'?"},
+  {id:"perm",n:"Permission prompt",ios:"Permission alert",and:"Permission dialog",s:"perm",d:"The system asking, on an app's behalf, for access to location, camera, contacts and more.",t:"Find a permission prompt. Who wrote the words in it: the app or the OS?"},
+  {id:"pay",n:"Payment sheet",ios:"Apple Pay sheet",and:"Google Pay / Samsung Pay sheet",s:"pay",d:"A system sheet that shows what you are paying and waits for confirmation.",t:"Start a purchase in an app and stop before confirming. What does the sheet show?"},
+  {id:"biometric",n:"Biometric confirmation",ios:"Face ID / Touch ID confirm",and:"Biometric prompt",s:"pay",d:"Face or fingerprint used as a signature for a payment or sign-in.",t:"Where else, besides unlocking, does your phone ask for your face or finger?"},
+  {id:"keyboard",n:"Software keyboard",ios:"Keyboard",and:"Keyboard (Gboard, Samsung Keyboard)",s:"keyboard",d:"The system keyboard. Its layout changes with the field: email, number, URL.",t:"Open four apps with text fields. How does the keyboard change between them?"},
+  {id:"suggest",n:"Suggestion strip",ios:"QuickType bar",and:"Suggestion strip",s:"keyboard",d:"Predicted words, corrections and pasted codes above the keys.",t:"Type half a word. What three things does the strip offer?"},
+  {id:"returnkey",n:"Return key",ios:"Return key",and:"Enter / action key",s:"keyboard",d:"The one key whose label changes with context: Go, Search, Send, Next, Done.",t:"Find three different labels on this key in three apps."},
+  {id:"editmenu",n:"Edit menu",ios:"Edit menu",and:"Text selection toolbar",s:"keyboard",d:"Cut, copy and paste, shown when text is selected.",t:"Select a word. What options appear beyond copy and paste?"}]],
+ ["Components: navigation",[
+  {id:"topbar",n:"Top bar",ios:"Navigation bar",and:"Top app bar",s:"app",d:"Names the screen and holds back and a few actions.",t:"Scroll a long list. Does the title shrink or the bar hide?"},
+  {id:"back",n:"Back control",ios:"Back button + edge swipe",and:"System back gesture + Up arrow",s:"app",d:"Returns to the previous screen. Both platforms pair a visible button with an edge gesture.",t:"Go two screens deep in Settings. How many ways can you go back?"},
+  {id:"iconbtn",n:"Icon button",ios:"Bar button",and:"Icon button",s:"app",d:"An action shown as an icon with no label.",t:"Find an icon button you cannot identify. Long-press it. Does it explain itself?"},
+  {id:"searchfield",n:"Search field",ios:"Search field",and:"Search bar",s:"app",d:"A field for filtering or finding content inside the app.",t:"Tap a search field. What appears before you type?"},
+  {id:"tabs",n:"In-page switcher",ios:"Segmented control",and:"Tabs / segmented button",s:"app",d:"Switches between views of the same content without leaving the screen.",t:"Find one in your Phone or Clock app."},
+  {id:"list",n:"List",ios:"List / table",and:"List",s:"app",d:"Rows of the same shape. The most common layout on any phone.",t:"Open Settings. What does a row contain besides its label?"},
+  {id:"swipe",n:"Swipe actions",ios:"Swipe actions",and:"Swipe to reveal / dismiss",s:"app",d:"Actions hidden behind a row, revealed by swiping it sideways.",t:"Swipe a row in your mail app both ways. What does each direction do?"},
+  {id:"fab",n:"Floating action button",ios:"Uncommon on iOS",and:"Floating action button (FAB)",s:"app",d:"A raised button for the screen's main action, common in Material apps.",t:"Find one. What single action does it stand for?"},
+  {id:"tabbar",n:"Bottom navigation",ios:"Tab bar",and:"Navigation bar",s:"app",d:"Three to five top-level destinations, always one tap away.",t:"Count the destinations in three of your apps."},
+  {id:"badge2",n:"Badge on a tab",ios:"Badge",and:"Badge",s:"app",d:"A count attached to a destination, not to the whole app.",t:"Find a badge inside an app. What clears it?"}]],
+ ["Components: input and actions",[
+  {id:"textfield",n:"Text field",ios:"Text field",and:"Text field (filled / outlined)",s:"form",d:"A box for typing, with a label and often helper or error text.",t:"Find a field with a floating label. Where does the label go when you type?"},
+  {id:"datepicker",n:"Date picker",ios:"Date picker",and:"Date picker",s:"form",d:"A control for choosing a date or time without typing it.",t:"Set an alarm. Is the picker a wheel, a clock face or a keypad?"},
+  {id:"chips",n:"Chips",ios:"Uncommon; tokens in search",and:"Chip (filter, input, suggestion)",s:"form",d:"Small pills for filters, tags or choices.",t:"Find filter chips in a store or maps app."},
+  {id:"switch",n:"Switch",ios:"Toggle",and:"Switch",s:"form",d:"On or off, applied immediately.",t:"Find a switch and a checkbox. Why is each one used where it is?"},
+  {id:"checkbox",n:"Checkbox",ios:"Checkmark row",and:"Checkbox",s:"form",d:"Pick any number of options from a set.",t:"Enter select mode in your photos. What marks a selected item?"},
+  {id:"radio",n:"Radio button",ios:"Checkmark list / picker",and:"Radio button",s:"form",d:"Pick exactly one option from a set.",t:"Change your ringtone. How is the current choice marked?"},
+  {id:"slider",n:"Slider",ios:"Slider",and:"Slider",s:"form",d:"Pick a value along a range by dragging.",t:"Find three sliders on your phone."},
+  {id:"stepper",n:"Stepper",ios:"Stepper",and:"No standard component",s:"form",d:"Plus and minus for nudging a small number.",t:"Find one in a shopping cart."},
+  {id:"buttons",n:"Buttons",ios:"Filled, tinted, plain",and:"Filled, tonal, outlined, text",s:"form",d:"The emphasis of a button tells you which action is primary.",t:"On one screen, rank the buttons from loudest to quietest."},
+  {id:"menu",n:"Menu",ios:"Pull-down / context menu",and:"Menu",s:"form",d:"A short list of actions that opens from a button or a long press.",t:"Long-press an app icon. What is in the menu?"}]],
+ ["Components: feedback",[
+  {id:"sheet",hl:"share",n:"Bottom sheet",ios:"Sheet",and:"Bottom sheet",s:"share",d:"A panel that slides up over the screen and can be dragged down to dismiss.",t:"Find a sheet you can drag to more than one height."},
+  {id:"dialog",hl:"perm",n:"Alert",ios:"Alert",and:"Dialog",s:"perm",d:"A message that blocks everything until you answer it.",t:"Delete something. Is the destructive option styled differently?"},
+  {id:"snackbar",n:"Snackbar",ios:"No system component",and:"Snackbar / toast",s:"feedback",d:"A brief message at the bottom, often with Undo. It leaves on its own.",t:"Archive an email. How long do you get to undo?"},
+  {id:"linear",n:"Progress bar",ios:"Progress bar",and:"Linear progress indicator",s:"feedback",d:"Shows how much of a known task is done.",t:"Download something. Where does progress appear?"},
+  {id:"spinner",n:"Spinner",ios:"Activity indicator",and:"Circular progress indicator",s:"feedback",d:"Shows that work is happening when its length is unknown.",t:"Pull down on a feed to refresh. What shape is the indicator?"},
+  {id:"skeleton",n:"Skeleton",ios:"Redacted placeholder",and:"Skeleton / shimmer",s:"feedback",d:"Grey shapes standing in for content that is still loading.",t:"Open a social app on a slow connection. What do you see first?"}]],
+ ["States",[
+  {id:"empty",n:"Empty state",ios:"Content unavailable view",and:"Empty state",s:"empty",d:"A screen with no content yet. A good one says what to do next.",t:"Find an empty state. Does it tell you what to do?"},
+  {id:"loading",n:"Loading state",ios:"Loading",and:"Loading",s:"feedback",d:"The gap between asking and getting. It is designed, not default.",t:"Which of your apps feels fastest to load? Why?"},
+  {id:"error",n:"Error state",ios:"Error",and:"Error",s:"error",d:"Something failed. A good one says what went wrong and offers a way out.",t:"Find an error message on your phone. Does it blame you?"},
+  {id:"offline",n:"Offline state",ios:"Offline",and:"Offline",s:"offline",d:"What an app shows with no connection.",t:"Turn on airplane mode and open three apps. Which handles it best?"}]]
+];
+
+// ---------- scenes ----------
+const SB=(live)=>`<div class="sb" data-p="status"><b>9:41</b><i class="isl ${live?'live':''}" data-p="island"></i><span class="sbi"><i class="pdot" data-p="privacy"></i><i class="sig"></i><i class="wifi"></i><i class="bat"></i></span></div>`;
+const HI=`<div class="hi" data-p="homebar"></div>`;
+const ic=(n,c,x='',p='')=>`<span class="appi" ${p?`data-p="${p}"`:''}><i class="ic" style="--c:${c}">${x}</i>${n}</span>`;
+const APPS=[["Mail","#3b6cf6"],["Maps","#2a9d5c"],["Notes","#f4b400"],["Photos","#e07a5f"],["Clock","#22262d"],["Music","#d62839"],["Files","#4895ef"],["Health","#ef476f"],["Wallet","#1b1f24"],["Books","#f77f00"],["Camera","#6c757d"],["Tasks","#7b2cbf"]];
+const row=(a,b,c,t)=>`<div class="row"><i style="--c:${c}"></i><div><b>${a}</b><span>${b}</span></div><small>${t}</small></div>`;
+const home=(live,x='')=>`<div class="scn wp" data-p="home">${SB(live)}<div class="grid"><div class="wdg" data-p="widget"><small>Wed 18</small><b>12°</b><span>Light rain</span></div>${ic("Mail","#3b6cf6",'<em class="bdg" data-p="badge">3</em>')}${ic("Maps","#2a9d5c","","appicon")}<span class="appi"><span class="fold" data-p="folder"><i></i><i></i><i></i><i></i></span>Work</span>${APPS.slice(2,9).map(a=>ic(a[0],a[1])).join("")}</div><div class="dots" data-p="pages"><i class="on"></i><i></i><i></i></div><div class="srch" data-p="search">Search</div><div class="dock" data-p="dock">${[4,5,10,11].map(i=>`<i class="ic" style="--c:${APPS[i][1]}"></i>`).join("")}</div>${HI}${x}</div>`;
+const app=(x='')=>`<div class="scn" data-p="appscreen">${SB()}<div class="tbar" data-p="topbar"><i class="bk" data-p="back"></i><b>Inbox</b><span class="ibs" data-p="iconbtn"><i></i><i></i></span></div><div class="sf" data-p="searchfield">Search mail</div><div class="seg" data-p="tabs"><b class="on">All</b><b>Unread</b><b>Flagged</b></div><div class="lst" data-p="list">${row("Ana Reyes","Studio visit on Friday","#e07a5f","9:12")}<div class="swr" data-p="swipe">${row("Kenji Mori","Prototype feedback","#2a9d5c","8:40")}<em>Archive</em></div>${row("Library","Your hold is ready","#f4b400","Tue")}${row("Priya N.","Slides for crit","#7b2cbf","Tue")}${row("Transit","Service change","#4895ef","Mon")}</div><div class="fab" data-p="fab">+</div><div class="tabbar" data-p="tabbar"><span class="on">Inbox<em class="bdg" data-p="badge2">2</em></span><span>Search</span><span>Calendar</span><span>Settings</span></div>${HI}${x}</div>`;
+const state=(id,g,a,b,c,pre='')=>`<div class="scn" data-p="${id}">${SB()}<div class="tbar"><b>Trips</b></div>${pre}<div class="st"><i>${g}</i><b>${a}</b><span>${b}</span><u>${c}</u></div>${HI}</div>`;
+const SCENES={
+ aod:()=>`<div class="scn aod" data-p="aod"><h3>9:41</h3>Wed 18 Nov</div>`,
+ lock:()=>`<div class="scn wp" data-p="lock">${SB()}<div class="lockc"><i class="lk" data-p="unlock"></i><h3>9:41</h3>Wednesday 18 November</div><div class="ncard" data-p="locknotif" style="margin-top:22px"><small><span>MESSAGES</span><span>now</span></small><b>Ana Reyes</b>Are we still on for Friday?</div><div class="ncard media" data-p="lockmedia" style="margin-top:6px"><i class="art"></i><div><b>Night Bus</b><br>The Cartographers<div class="bar"></div></div></div><div class="lshort" data-p="lockshort"><i>Torch</i><i>Cam</i></div>${HI}</div>`,
+ home:()=>home(false), live:()=>home(true),
+ drawer:()=>`<div class="scn" data-p="drawer">${SB()}<div class="sf" style="margin-bottom:10px">Search apps</div><div class="grid">${APPS.concat(APPS.slice(0,8)).sort((a,b)=>a[0]<b[0]?-1:1).map(a=>ic(a[0],a[1])).join("")}</div>${HI}</div>`,
+ shade:()=>`<div class="scn dark" data-p="shade">${SB()}<div class="pn"><h4>Notifications</h4><div class="ncard media" data-p="ongoing"><i class="art"></i><div><b>Night Bus</b><br>The Cartographers<div class="bar"></div></div></div><div class="ncard"><small><span>MESSAGES</span><span>2m</span></small><b>Ana Reyes</b>Are we still on for Friday?<div class="nact" data-p="nactions"><u>Reply</u><u>Mark as read</u></div></div><div class="ncard stack" data-p="ngroup"><small><span>MAIL · 3 new</span><span>18m</span></small><b>Kenji Mori</b>Prototype feedback</div><div class="ncard" style="margin-top:6px"><small><span>CALENDAR</span><span>1h</span></small><b>Crit, room 204</b>Starts at 2:00 pm</div></div>${HI}</div>`,
+ quick:()=>`<div class="scn dark" data-p="quick">${SB()}<div class="pn"><h4>Quick settings</h4><div class="tiles"><div class="tile on">Wi-Fi</div><div class="tile on">Bluetooth</div><div class="tile">Airplane</div><div class="tile on" data-p="focus">Do not disturb</div><div class="tile">Torch</div><div class="tile">Rotation lock</div><div class="tile">Hotspot</div><div class="tile">Battery saver</div></div><div class="sl"><span>Brightness</span></div><div class="sl"><span>Volume</span></div></div>${HI}</div>`,
+ switcher:()=>`<div class="scn dark" data-p="switcher">${SB()}<div class="swc"><div data-n="Maps"><p></p><p></p><p style="height:90px"></p></div><div data-n="Mail"><p></p><p></p><p></p><p></p><p></p><p style="width:60%"></p></div><div data-n="Notes"><p></p><p style="width:70%"></p><p></p></div></div>${HI}</div>`,
+ banner:()=>app(`<div class="ncard bnr" data-p="banner"><small><span>MESSAGES</span><span>now</span></small><b>Ana Reyes</b>Are we still on for Friday?</div>`),
+ app:()=>app(),
+ share:()=>app(`<div class="dim"></div><div class="sheet" data-p="share"><i class="grab"></i><div class="hrow"><span><i style="--c:#e07a5f"></i>Ana</span><span><i style="--c:#2a9d5c"></i>Kenji</span><span><i style="--c:#7b2cbf"></i>Priya</span><span data-p="nearby"><i></i>Nearby</span></div><div class="hrow sq"><span><i style="--c:#3b6cf6"></i>Mail</span><span><i style="--c:#2a9d5c"></i>Messages</span><span><i style="--c:#f4b400"></i>Notes</span><span><i></i>More</span></div><div class="acts"><u>Copy</u><u>Save to Files</u><u>Print</u></div></div>`),
+ perm:()=>app(`<div class="dim"></div><div class="alert" data-p="perm"><b>Allow “Trailhead” to use your location?</b><p>Used to show trails near you.</p><u>Allow once</u><u>Allow while using the app</u><u>Don’t allow</u></div>`),
+ pay:()=>app(`<div class="dim"></div><div class="sheet" data-p="pay"><i class="grab"></i><div class="cardv">Card ending 4417</div><div class="paysum"><span>Trailhead Pro</span><span>$4.99</span></div><div class="bio" data-p="biometric"><i></i>Confirm with fingerprint or face</div></div>`),
+ keyboard:()=>`<div class="scn">${SB()}<div class="tbar"><i class="bk"></i><b>Ana Reyes</b></div><div class="chat"><div class="bub">Are we still on for Friday?</div><div class="bub me">Yes, 3 pm at the studio</div><div class="bub">Bring the prototype</div></div><div class="kbwrap"><div class="emenu" data-p="editmenu"><u>Cut</u><u>Copy</u><u>Paste</u><u>Look up</u></div><div class="inp">Will do, see you&nbsp;<mark>then</mark></div><div class="sug" data-p="suggest"><u>then</u><u>there</u><u>Friday</u></div><div class="kb" data-p="keyboard">${["qwertyuiop","asdfghjkl"].map(r=>`<div class="kr">${[...r].map(k=>`<u>${k}</u>`).join("")}</div>`).join("")}<div class="kr"><u class="w">⇧</u>${[..."zxcvbnm"].map(k=>`<u>${k}</u>`).join("")}<u class="w">⌫</u></div><div class="kr"><u class="w">123</u><u class="sp"></u><u class="rt" data-p="returnkey">send</u></div></div></div>${HI}</div>`,
+ form:()=>`<div class="scn">${SB()}<div class="tbar"><i class="bk"></i><b>New trip</b><span class="ibs"><i></i></span></div><div class="form"><div class="tf" data-p="textfield"><small>Name</small>Cascade loop</div><div class="fr" data-p="datepicker"><span>Start</span><b style="color:var(--ua)">Sat 21 Nov</b></div><div class="chips" data-p="chips"><u>Hike</u><u class="on">Bike</u><u>Run</u></div><div class="fr" data-p="switch"><span>Offline maps</span><i class="tog"></i></div><div class="cbs fr" data-p="checkbox" style="justify-content:flex-start"><span class="cb on">Water</span><span class="cb">First aid</span><span class="cb on">Lights</span></div><div class="cbs fr" data-p="radio" style="justify-content:flex-start"><span class="cb rd">Easy</span><span class="cb rd on">Moderate</span><span class="cb rd">Hard</span></div><div class="fr" data-p="slider"><span>Distance</span><i class="rng"></i><span>12 km</span></div><div class="fr" data-p="stepper"><span>People</span><span class="stp"><u>−</u><u>2</u><u>+</u></span></div><div class="btns" data-p="buttons"><u class="f">Save</u><u class="o">Preview</u><u>Cancel</u></div></div><div class="menu" data-p="menu"><u>Duplicate</u><u>Share</u><u>Delete</u></div>${HI}</div>`,
+ feedback:()=>`<div class="scn" data-p="loading">${SB()}<div class="tbar"><b>Photos</b></div><div class="lin" data-p="linear"></div><div data-p="skeleton"><div class="sk"><i></i><p></p></div><div class="sk"><i></i><p></p></div><div class="sk"><i></i><p></p></div></div><div class="spin" data-p="spinner"></div><div class="toast" data-p="toast">Link copied</div><div class="snack" data-p="snackbar"><span>Photo archived</span><u>UNDO</u></div>${HI}</div>`,
+ empty:()=>state("empty","+","No trips yet","Plan your first route and it will show up here.","New trip"),
+ error:()=>state("error","!","Could not load trips","The server did not respond. Your saved trips are safe.","Try again"),
+ offline:()=>state("offline","~","You are offline","Showing trips saved on this phone.","Open saved trips",`<div class="offb">No connection</div>`)
+};
+
+// ---------- v2: more scenes ----------
+const KB=(mid)=>`<div class="kb" data-p="keyboard">${mid||["qwertyuiop","asdfghjkl"].map(r=>`<div class="kr">${[...r].map(k=>`<u>${k}</u>`).join("")}</div>`).join("")+`<div class="kr"><u class="w">⇧</u>${[..."zxcvbnm"].map(k=>`<u>${k}</u>`).join("")}<u class="w">⌫</u></div>`}<div class="kr"><u class="w">123</u><u class="w" data-p="dictation">mic</u><u class="sp" style="width:68px"></u><u class="rt" data-p="returnkey">send</u></div></div>`;
+const chat=(mid,emo)=>`<div class="scn">${SB()}<div class="tbar"><i class="bk"></i><b>Ana Reyes</b></div><div class="chat"><div class="cpill" data-p="clipboard">Pasted from Notes</div><div class="bub">Are we still on for Friday?</div><div class="bub me">Yes, 3 pm at the studio</div></div><div class="kbwrap"><div class="emenu" data-p="editmenu"><u>Cut</u><u>Copy</u><u>Paste</u><u>Look up</u></div><div class="inp">Will do, see you&nbsp;<mark data-p="selection">then</mark></div>${emo?"":`<div class="sug" data-p="suggest"><u>then</u><u>there</u><u>Friday</u></div>`}${KB(mid)}</div>${HI}</div>`;
+const setScene=(id,title,rows,search)=>`<div class="scn" data-p="${id}">${SB()}<div class="tbar"><i class="bk"></i><b>${title}</b></div>${search?`<div class="sf" data-p="set-search" style="margin-bottom:8px">Search settings</div>`:""}<div class="lst">${rows.map(([a,b,p])=>`<div class="fr srow" ${p?`data-p="${p}"`:""}><span>${a}</span>${b==="on"||b==="off"?`<i class="tog ${b==="off"?"off":""}"></i>`:`<span>${b||"›"}</span>`}</div>`).join("")}</div>${HI}</div>`;
+const alertx=(p,a,b,btns)=>`<div class="dim"></div><div class="alert" data-p="${p}"><b>${a}</b><p>${b}</p>${btns.map(x=>`<u>${x}</u>`).join("")}</div>`;
+const sheetx=(p,body)=>`<div class="dim"></div><div class="sheet" data-p="${p}"><i class="grab"></i>${body}</div>`;
+const tiles=(n)=>APPS.slice(0,n).map(a=>`<i style="--c:${a[1]}"></i>`).join("");
+Object.assign(SCENES,{
+ keyboard:()=>chat(),
+ emoji:()=>chat(`<div class="emo" data-p="emoji">${"<i></i>".repeat(24)}</div>`,true),
+ map:()=>`<div class="scn" data-p="map"><div class="mp"></div>${SB()}<div class="sf mapsf">Search maps</div><i class="pin"></i><i class="cmp" data-p="compass">N</i>${HI}</div>`,
+ voice:()=>home(false,`<div class="dim"></div><div class="asst" data-p="assistant"><i></i>Listening…<small>Set a timer for ten minutes</small></div>`),
+ scan:()=>`<div class="scn dark" data-p="scan">${SB()}<div class="vf"><i class="qr" data-p="qr"></i><u class="lt" data-p="livetext">Open trailhead.app</u></div><div class="shut"></div>${HI}</div>`,
+ reader:()=>home(false,`<i class="rfocus"></i><div class="rdr" data-p="reader">Mail. 3 unread. Double tap to open.</div>`),
+ draw:()=>`<div class="scn" data-p="draw">${SB()}<div class="tbar"><i class="bk"></i><b>Sketch</b></div><div class="cnv"><svg viewBox="0 0 216 330" width="100%" height="100%"><path d="M30 220C60 90 90 260 120 140S170 60 190 180" fill="none" stroke="#3b6cf6" stroke-width="4" stroke-linecap="round"/><path d="M40 270h120" stroke="#1b1f24" stroke-width="2" stroke-linecap="round"/></svg></div><div class="pens" data-p="pens"><i style="--c:#1b1f24"></i><i style="--c:#3b6cf6"></i><i style="--c:#e07a5f"></i><i style="--c:#f4b400"></i></div>${HI}</div>`,
+ today:()=>`<div class="scn wp" data-p="today">${SB()}<div class="pn"><div class="tw"><small>CALENDAR</small><b>Crit, room 204</b>2:00 pm</div><div class="tw"><small>WEATHER</small><b>12° Light rain</b>Clearing by 5 pm</div><div class="tw"><small>TASKS</small><b>3 due today</b>Slides, readings, sketch</div><div class="tw"><small>BATTERY</small><b>62%</b>Earbuds 80%</div></div>${HI}</div>`,
+ split:()=>`<div class="scn dark" data-p="split">${SB()}<div class="half"><div class="tbar"><b>Inbox</b></div>${row("Ana Reyes","Studio visit on Friday","#e07a5f","9:12")}${row("Kenji Mori","Prototype feedback","#2a9d5c","8:40")}</div><i class="splitbar"></i><div class="half"><div class="mp"></div><i class="pin" style="top:90px"></i></div>${HI}</div>`,
+ pip:()=>home(false,`<div class="pipv" data-p="pip"><i></i></div>`),
+ power:()=>`<div class="scn dark" data-p="powermenu">${SB()}<div class="pm"><div class="pslide">Slide to power off</div><div class="pslide sos" data-p="sos">Emergency SOS</div><div class="pslide" data-p="medid">Medical ID</div></div><u class="pcancel">Cancel</u></div>`,
+ volume:()=>app(`<div class="volp" data-p="volpanel"><i></i></div>`),
+ wallpaper:()=>`<div class="scn dark" data-p="wallpaper">${SB()}<div class="pn"><h4>Wallpaper and style</h4><div class="wpp"><i class="wp"></i><i class="wp" style="filter:hue-rotate(110deg)"></i><i class="wp" style="filter:hue-rotate(220deg)"></i></div><h4>Colour palette</h4><div class="tcol" data-p="themecolor"><i style="--c:#3b6cf6"></i><i style="--c:#2a9d5c"></i><i style="--c:#e07a5f"></i><i style="--c:#7b2cbf"></i><i style="--c:#f4b400"></i></div></div>${HI}</div>`,
+ quickact:()=>home(false,`<div class="dim"></div><div class="menu qa" data-p="quickact"><u>New message</u><u>Search mail</u><u>Remove app</u></div>`),
+ settings:()=>setScene("settings","Settings",[["Wi-Fi","Studio-5G"],["Bluetooth","On"],["Notifications","","set-notif"],["Display","Dark mode, text size","set-display"],["Accessibility","","set-a11y"],["Language and region","English (US)","set-lang"],["Accounts and backup","","set-accounts"],["Apps","","set-apps"],["Battery","62%"],["Screen time","2 h 14 m"],["Software update","1 available"]],true),
+ nset:()=>setScene("nset","Mail notifications",[["Allow notifications","on"],["Show on lock screen","on"],["Banners","on"],["Badges","on"],["Category: Personal","Sound","channels"],["Category: Promotions","Silent","channels"],["Sound","Chime","nsound"],["Vibration","Short","nsound"],["Deliver quietly","off","nsound"],["Location","While using","perms"],["Camera","Ask every time","perms"],["Mobile data","on"]]),
+ battery:()=>setScene("battery","Battery",[["Battery level","9%","batt-low"],["Battery saver","on","batt-saver"],["Battery health","Good"],["Charging","Not charging"],["Usage by app",""]]),
+ picker:()=>app(sheetx("picker",`<div class="seg" style="margin:0"><b class="on">Photos</b><b>Files</b></div><div class="pgrid">${tiles(9)}</div>`)),
+ autofill:()=>`<div class="scn">${SB()}<div class="tbar"><i class="bk"></i><b>Sign in</b></div><div class="form"><div class="tf"><small>Email</small>ana@trailhead.app</div><div class="tf" style="border-color:#b9bfc9"><small style="color:#8a919c">Password</small>&nbsp;</div><div class="sgn" data-p="signin"><u>Continue with Apple</u><u>Continue with Google</u></div></div><div class="kbwrap"><div class="afill" data-p="autofill"><span>Use saved password</span><span>Use passkey</span></div>${KB()}</div>${HI}</div>`,
+ openwith:()=>app(sheetx("openwith",`<b>Open with</b><div class="hrow sq"><span><i style="--c:#3b6cf6"></i>Browser</span><span><i style="--c:#2a9d5c"></i>Trailhead</span></div><div class="btns"><u>Just once</u><u class="f">Always</u></div>`)),
+ cast:()=>app(sheetx("cast",`<b>Cast or print</b><div class="acts"><u>Living room TV</u><u>Studio speaker</u><u>Print…</u></div>`)),
+ rating:()=>app(alertx("rating","Enjoying Trailhead?","Tap a star to rate it.",[`<span class="stars">★★★★☆</span>`,"Not now"])),
+ shot:()=>app(`<i class="recp" data-p="screenrec">REC</i><div class="shotp" data-p="screenshot"><i></i></div>`),
+ wallet:()=>`<div class="scn dark" data-p="wallet">${SB()}<div class="pn"><h4>Wallet</h4></div><div class="wst"><div class="cardv">Card ending 4417</div><div class="cardv" style="filter:hue-rotate(120deg)">Card ending 0921</div><div class="cardv" style="filter:hue-rotate(240deg)">Student ID</div></div><div class="pass" data-p="pass"><b>Transit pass</b><br>Valid until 30 Nov</div><div class="bio" data-p="taptopay" style="margin:0 auto;width:max-content"><i></i>Hold near reader</div>${HI}</div>`,
+ update:()=>home(false,alertx("update","Software update","A new version is ready to install.",["Install tonight","Later"])),
+ storagefull:()=>home(false,alertx("storagefull","Storage almost full","Free up space to keep taking photos.",["Manage storage","Close"])),
+ lowbatt:()=>home(false,alertx("lowbatt","Low battery","10% remaining.",["Turn on battery saver","Close"])),
+ screentime:()=>state("screentime","0","Time limit reached","You have used Feed for 1 hour today.","Ask for more time"),
+ call:()=>`<div class="scn dark" data-p="call">${SB()}<div class="st" style="inset:70px 0 auto"><i>A</i><b>Ana Reyes</b><span>Incoming call</span></div><div class="callb"><i>Decline</i><i class="acc">Accept</i></div></div>`,
+ navdrawer:()=>app(`<div class="dim"></div><div class="ndraw" data-p="navdrawer"><b>Mail</b><u class="on">Inbox</u><u>Sent</u><u>Drafts</u><u>Archive</u><u>Settings</u></div>`),
+ store:()=>`<div class="scn">${SB()}<div class="tbar"><b>Discover</b><span class="ibs"><i></i></span></div><div class="tip" data-p="tooltip">Filters</div><div class="shead"><b>Featured</b><u class="lnk" data-p="link">See all</u></div><div class="car" data-p="carousel"><i class="cd" data-p="card"><b>Ridge walk</b>12 km</i><i class="cd" style="filter:hue-rotate(100deg)"><b>River loop</b>8 km</i><i class="cd"></i></div><hr data-p="divider"><div class="shead"><b>Categories</b></div><div class="tgr" data-p="grid">${tiles(6)}</div><div class="fr xp" data-p="expand"><span>Trail conditions</span><i class="chev"></i></div><div class="tbr" data-p="toolbar"><i></i><i></i><i></i><i></i></div>${HI}</div>`,
+ modal:()=>`<div class="scn" data-p="modal">${SB()}<div class="tbar"><u style="color:var(--ua)">Cancel</u><b style="text-align:center">New message</b><u style="color:var(--ua);font-weight:600">Send</u></div><div class="form"><div class="fr srow">To: Ana Reyes</div><div class="fr srow">Subject: Friday</div><div style="padding:8px 2px;color:var(--um)">Write your message</div></div>${HI}</div>`,
+ actionsheet:()=>app(sheetx("actionsheet",`<div class="acts"><u style="color:#d62839">Delete photo</u><u>Hide photo</u></div><div class="acts"><u style="text-align:center;font-weight:600">Cancel</u></div>`)),
+ pickers:()=>`<div class="scn">${SB()}<div class="tbar"><i class="bk"></i><b>Timer</b></div><div class="whl" data-p="wheel"><b>08</b><b>29</b><b class="c">09 min</b><b class="c">30 sec</b><b>10</b><b>31</b></div><div class="cpk" data-p="colorpick"><div class="sw6">${tiles(6)}</div><i class="hue"></i></div>${HI}</div>`,
+ foundations:()=>`<div class="scn">${SB()}<div class="tbar"><b>Foundations</b></div><div class="fnd"><div data-p="f-type"><small>Typography</small><b style="font:700 19px/1.1 var(--display)">Title</b> <span style="font-size:13px">Body</span> <span style="font-size:8px;color:var(--um)">Caption</span></div><div data-p="f-color"><small>Colour roles</small><div class="sw6"><i style="--c:#3b6cf6"></i><i style="--c:#dbe5ff"></i><i style="--c:#1b1f24"></i><i style="--c:#f4f5f7;outline:1px solid #ccc"></i><i style="--c:#d62839"></i><i style="--c:#2a9d5c"></i></div></div><div class="icr" data-p="f-icons"><small>Iconography</small><i style="border-radius:50%"></i><i></i><i style="border-radius:5px"></i><i style="border-radius:50% 50% 0 50%"></i><i style="transform:rotate(45deg) scale(.8)"></i></div><div class="spc" data-p="f-space"><small>Spacing and margins</small><i></i><i></i><i></i></div><div class="tgt" data-p="f-target"><small>Touch target</small><i>44 pt<br>48 dp</i></div><div class="elv" data-p="f-elev"><small>Elevation</small><i style="box-shadow:0 1px 2px rgba(0,0,0,.2)"></i><i style="box-shadow:0 3px 8px rgba(0,0,0,.25)"></i><i style="box-shadow:0 8px 18px rgba(0,0,0,.3)"></i></div><div class="mot" data-p="f-motion"><small>Motion</small><i></i></div></div>${HI}</div>`,
+ cstates:()=>`<div class="scn">${SB()}<div class="tbar"><b>One button, eight states</b></div><div class="cst"><u data-p="cs-default">Default</u><u class="pr" data-p="cs-pressed">Pressed</u><u class="fo" data-p="cs-focused">Focused</u><u class="se" data-p="cs-selected">✓ Selected</u><u class="di" data-p="cs-disabled">Disabled</u><u data-p="cs-loading"><i class="spin sm"></i></u><u class="dr" data-p="cs-dragged">Dragged</u><span></span><div data-p="cs-error" class="tf er"><small>Email</small>ana@<em>Enter a full email address</em></div></div>${HI}</div>`,
+ onboarding:()=>state("onboarding","1","Welcome to Trailhead","Find routes near you in three steps.","Get started"),
+ denied:()=>state("denied","×","Camera access is off","Turn it on in Settings to scan trail markers.","Open Settings"),
+ signedout:()=>state("signedout","→","Sign in to see your trips","Your saved routes sync across devices.","Sign in"),
+ partial:()=>`<div class="scn" data-p="partial">${SB()}<div class="tbar"><b>Trips</b></div><div class="lst">${row("Ridge walk","12 km, Saturday","#2a9d5c","")}${row("River loop","8 km, Sunday","#4895ef","")}</div><div class="sk"><i></i><p></p></div><div class="sk"><i></i><p></p></div>${HI}</div>`
+});
+
+// ---------- v2: more items ----------
+HW[0][1].push(
+ {id:"safearea",n:"Rounded corners and safe area",d:"The region content must stay inside so corners, the cutout and the home bar never clip it.",t:"Open a full-screen video or game. What gets hidden by the corners or cutout?"},
+ {id:"refresh",hl:"display",n:"Refresh rate and brightness",d:"How many times a second the panel redraws (60 or 120 Hz), and how it adapts brightness to the room.",t:"Scroll a list slowly. Find the refresh rate and adaptive brightness settings."},
+ {id:"led",n:"Notification light",d:"A small LED that blinks for alerts. Most current phones dropped it for the always-on display.",t:"Does your phone have one? If not, what replaced it?"});
+HW[1][1].push(
+ {id:"camkey",n:"Camera key",d:"A dedicated shutter or camera control on some phones, sometimes touch-sensitive.",t:"Is there a button on your phone that only does camera things?"},
+ {id:"jack",n:"Headphone jack",d:"The 3.5 mm audio port. Rare on current phones.",t:"How do wired headphones connect to your phone?"},
+ {id:"combos",hl:["power","volume"],n:"Button combinations",d:"Pressing buttons together triggers system actions: screenshot, power menu, force restart, emergency SOS.",t:"Find the combination for a screenshot and for the power menu. Do not hold the SOS one."});
+HW.push(["Varies by phone",[
+ {id:"hinge",hl:"frame",x:1,n:"Hinge and cover screen",d:"Foldables add a hinge and a second outer display, so one app can exist at two sizes.",t:"If anyone in class has a foldable, open one app folded and unfolded. What changes?"},
+ {id:"edge",hl:"glass",x:1,n:"Curved or edge screen",d:"Glass that wraps around the sides. Some phones put a pull-out panel of shortcuts there.",t:"Is your screen flat or curved at the sides? Is there an edge panel?"}]]);
+
+const IN=[
+ ["Touch gestures",[
+  {id:"tap",s:"home",g:[["tp",147,62]],n:"Tap",d:"Touch and lift. Activates or selects.",t:"Tap an app icon. What feedback do you get before the app opens?"},
+  {id:"dtap",s:"map",g:[["tp2",120,250]],n:"Double tap",d:"Two quick taps. Zooms a map or photo, likes a post, or wakes the screen.",t:"Double tap a photo, a map and your lock screen. What does each do?"},
+  {id:"long",s:"quickact",g:[["hold",147,62]],n:"Long press",ios:"Touch and hold",and:"Long press",d:"Touch and keep holding. Opens a context menu or enters edit mode.",t:"Show three different results of a long press on three different objects."},
+  {id:"swipe",s:"app",g:[["mv",200,203,80,203]],n:"Swipe",d:"A quick straight stroke. Moves between pages, reveals row actions, dismisses.",t:"Swipe a row in your mail app both ways. What does each direction do?"},
+  {id:"drag",s:"quick",g:[["mv",60,272,180,272]],n:"Drag",d:"Press and move while holding. Moves an object or scrubs a slider.",t:"Drag the brightness slider. Does the value follow your finger exactly?"},
+  {id:"scroll",s:"app",g:[["fling",120,360,120,190]],n:"Scroll and fling",d:"Move through content. A fast flick keeps going with momentum.",t:"Fling a long feed, then stop it with one finger."},
+  {id:"pinch",s:"map",g:[["mv",140,225,185,165],["mv",100,285,55,345]],n:"Pinch and spread",d:"Two fingers moving together or apart. Zooms out and in.",t:"Zoom a map. Does it zoom around your fingers or around the centre?"},
+  {id:"rotate",s:"map",g:[["orb"]],n:"Rotate",d:"Two fingers turning around a point. Turns a map or image.",t:"Rotate a map, then find the control that points it north again."},
+  {id:"pull",s:"app",g:[["mv",120,150,120,270]],n:"Pull to refresh",d:"Drag a list down past its top to reload it.",t:"Pull down in mail or a feed. What does the indicator look like?"},
+  {id:"edgeswipe",s:"app",g:[["mv",4,260,120,260]],n:"Edge swipe",d:"A swipe that starts off the screen edge. The system uses it for back, home and recents.",t:"Where does an edge swipe conflict with an app's own swipe?"},
+  {id:"multi",s:"keyboard",g:[["mv",150,150,70,150],["mv",165,180,85,180],["mv",150,210,70,210]],n:"Multi-finger gestures",d:"Three or more fingers. Used for undo, copy and paste, or screenshots, depending on the phone.",t:"Try a three-finger swipe or pinch in a text field. Does anything happen?"},
+  {id:"dnd",s:"home",g:[["dnd",147,62,60,300]],n:"Drag and drop",d:"Long press to lift something, then carry it elsewhere, even into another app.",t:"Drag an app icon to another page. Then try dragging text between two apps."}]],
+ ["Other ways in",[
+  {id:"typing",hl:"keyboard",s:"keyboard",g:[["mv",40,395,200,425]],n:"Typing and swipe typing",d:"Tapping keys, or sliding one finger across the letters of a word.",t:"Type a sentence by sliding instead of tapping. How accurate is it?"},
+  {id:"voice",hl:"assistant",s:"voice",n:"Voice",ios:"Siri, Dictation",and:"Gemini, voice typing (Samsung: Bixby)",d:"Speaking to dictate text or to summon the assistant with a wake word.",t:"How many ways can you start the assistant on your phone?"},
+  {id:"scan",s:"scan",n:"Camera as input",ios:"Code scanner, Live Text, Visual Look Up",and:"Lens, Circle to Search",d:"The camera reads QR codes, text in the world and objects.",t:"Point your camera at printed text. Can you copy it?"},
+  {id:"bioin",hl:"biometric",s:"pay",n:"Biometrics",ios:"Face ID / Touch ID",and:"Face unlock / fingerprint",d:"Your face or finger used as an unlock and a confirmation.",t:"Where, besides unlocking, does your phone ask for your face or finger?"},
+  {id:"motionin",hl:"none",s:"app",rz:90,n:"Motion",d:"Moving the phone itself: rotate to landscape, raise to wake, shake to undo.",t:"Rotate your phone in three apps. Which ones respond?"},
+  {id:"nfctap",hl:"taptopay",s:"wallet",n:"Proximity taps",ios:"Apple Pay, NameDrop",and:"Google Wallet, Quick Share tap",d:"Holding the phone near a reader or another phone to pay or share.",t:"What can you do by tapping your phone on something?"},
+  {id:"backtap",hl:"home",s:"home",x:1,n:"Back tap or squeeze",ios:"Back Tap",and:"Quick Tap (Pixel)",d:"Tapping the back of the phone or squeezing its sides as a shortcut. Only on some phones.",t:"Search your settings for back tap or quick tap. What can it trigger?"},
+  {id:"stylus",hl:"pens",s:"draw",n:"Stylus",ios:"Not on iPhone",and:"S Pen and others",d:"A pen adds pressure, hover and a button to touch input.",t:"If you have a stylus, what can it do that a finger cannot?"},
+  {id:"external",hl:"home",s:"home",n:"External input",d:"Keyboards, mice, game controllers, watches and earbuds all send input to the phone.",t:"Squeeze or tap your earbuds. Which phone actions do they control?"},
+  {id:"assistive",hl:"reader",s:"reader",n:"Assistive input",ios:"VoiceOver, Switch Control, Voice Control",and:"TalkBack, Switch Access, Voice Access",d:"A screen reader changes every gesture: one tap reads, a double tap activates.",t:"Turn on the screen reader for one minute. How do you open an app now?"}]]
+];
+
+const ext=(g,items)=>{let x=SW.find(a=>a[0]===g);if(!x){x=[g,[]];SW.push(x)}x[1].push(...items)};
+ext("System surfaces",[
+ {id:"today",n:"Leftmost page",ios:"Today View",and:"Discover feed (varies)",s:"today",d:"A page of widgets or news to the left of the first home page.",t:"Swipe right from your first home page. What is there?"},
+ {id:"split",n:"Two apps at once",ios:"Not on iPhone (iPad: Split View)",and:"Split screen, pop-up view",s:"split",d:"Two apps sharing the screen with a divider between them.",t:"From recent apps, tap an app's icon. Is there a split option?"},
+ {id:"pip",n:"Floating video",ios:"Picture in Picture",and:"Picture-in-picture",s:"pip",d:"A small video window that stays on top while you use other apps.",t:"Go home while a video plays. Can you move and resize the window?"},
+ {id:"powermenu",n:"Power menu",ios:"Power-off slider",and:"Power menu",s:"power",d:"The system screen for powering off, restarting and emergency options.",t:"Open it. Which buttons did you have to hold?"},
+ {id:"volpanel",n:"Volume overlay",ios:"Volume HUD",and:"Volume panel",s:"volume",d:"The indicator that appears when you press a volume key.",t:"Press volume up. Which volume changed: media, ringer or call?"},
+ {id:"onehand",hl:"home",cls:"oneh",n:"One-handed reach",ios:"Reachability",and:"One-handed mode",s:"home",d:"Slides the whole screen down so the top is reachable with a thumb.",t:"Find and trigger it on your phone."}]);
+ext("On the home and lock screens",[
+ {id:"appicon",n:"App icon",ios:"App icon",and:"App icon (adaptive, themed)",s:"home",d:"The app's face on the system. The OS masks its shape and can tint it.",t:"Do all your icons share one shape? Can you theme them?"},
+ {id:"quickact",n:"App quick actions",ios:"Home Screen quick actions",and:"App shortcuts",s:"quickact",d:"A menu of shortcuts from long-pressing an app icon.",t:"Long-press five app icons. Which app offers the most useful actions?"},
+ {id:"wallpaper",n:"Wallpaper and customisation",ios:"Lock Screen and Home Screen customisation",and:"Wallpaper and style (Material You)",s:"wallpaper",d:"Wallpaper, clock style and colours. On Android the wallpaper can recolour the whole system.",t:"Change your wallpaper. Does anything else change colour?"},
+ {id:"privacy",n:"Privacy indicators",ios:"Green and orange dots",and:"Camera and microphone indicators",s:"home",d:"A dot in the status bar while an app uses the camera, microphone or location.",t:"Open the camera, then look at the status bar. What appears?"},
+ {id:"lockmedia",n:"Lock screen media controls",ios:"Now Playing",and:"Media controls",s:"lock",d:"Play, pause and skip without unlocking.",t:"Play music and lock your phone. What can you control?"}]);
+ext("System moments",[
+ {id:"channels",n:"Notification categories",ios:"Per-app notification settings",and:"Notification channels",s:"nset",d:"Controls for which kinds of alerts an app may send and how.",t:"Open one app's notification settings. How many categories can you switch off?"},
+ {id:"nsound",n:"Sound, vibration, silent delivery",ios:"Sounds, Deliver Quietly",and:"Alerting vs silent",s:"nset",d:"Whether an alert makes noise, vibrates or arrives silently.",t:"Make one app deliver silently. Where do its alerts show now?"},
+ {id:"picker",n:"Photo and file picker",ios:"Photos picker, Files",and:"Photo picker, Files",s:"picker",d:"A system window for choosing photos or files, so the app only sees what you pick.",t:"Attach a photo in a message. Is the picker the app's or the system's?"},
+ {id:"autofill",n:"Autofill and passkeys",ios:"AutoFill, Passwords",and:"Autofill, Password Manager",s:"autofill",d:"The system offering a saved password, passkey or one-time code above the keyboard.",t:"Open a sign-in screen. What does the keyboard offer?"},
+ {id:"signin",n:"System sign-in",ios:"Sign in with Apple",and:"Sign in with Google",s:"autofill",d:"Signing in with your device account instead of a new password.",t:"Which of your apps offer it?"},
+ {id:"openwith",n:"Default app chooser",ios:"Default apps (Settings)",and:"Open with",s:"openwith",d:"The system asking which app should handle a link or file.",t:"Tap a link in a message. Which app opens it, and can you change that?"},
+ {id:"cast",n:"Print and cast pickers",ios:"AirPlay, Print",and:"Cast, Print",s:"cast",d:"System pickers for sending content to a screen, speaker or printer.",t:"Find the cast or AirPlay button in a video app."},
+ {id:"rating",n:"Rating prompt",ios:"App Store review prompt",and:"Play in-app review",s:"rating",d:"A system-drawn request to rate the app. Apps cannot restyle it.",t:"Have you seen one this month? What were you doing when it appeared?"},
+ {id:"iap",hl:"pay",n:"In-app purchase sheet",ios:"App Store purchase sheet",and:"Google Play billing",s:"pay",d:"The store's own sheet for subscriptions and purchases inside an app.",t:"Start a subscription flow and stop before confirming. Who draws that sheet?"},
+ {id:"emoji",n:"Emoji picker",ios:"Emoji keyboard",and:"Emoji, sticker and GIF picker",s:"emoji",d:"A panel that replaces the keys with emoji, stickers and GIFs.",t:"Open it. How is it organised, and does it have search?"},
+ {id:"selection",n:"Cursor and selection",ios:"Cursor, selection handles, loupe",and:"Cursor, selection handles, magnifier",s:"keyboard",d:"The insertion point, the handles for extending a selection and the magnifier above your finger.",t:"Hold the space bar and slide. What moves?"},
+ {id:"clipboard",n:"Clipboard and paste notice",ios:"Paste permission prompt",and:"Clipboard preview and access toast",s:"keyboard",d:"The system telling you when an app reads what you copied.",t:"Copy text in one app and paste it into another. Does the system say anything?"},
+ {id:"dictation",n:"Dictation",ios:"Dictation",and:"Voice typing",s:"keyboard",d:"A microphone key that turns speech into text in any field.",t:"Dictate a sentence with punctuation. How do you say a comma?"}]);
+ext("System services",[
+ {id:"assistant",n:"Assistant",ios:"Siri",and:"Gemini (Samsung: Bixby)",s:"voice",d:"The system assistant, summoned by voice, a button or a gesture.",t:"Summon it three different ways."},
+ {id:"screenshot",n:"Screenshot preview",ios:"Screenshot thumbnail and Markup",and:"Screenshot preview and toolbar",s:"shot",d:"The thumbnail that appears after a screenshot, with tools to crop, draw and share.",t:"Take a screenshot and tap the preview. What can you do before saving?"},
+ {id:"screenrec",n:"Screen recording",ios:"Screen Recording",and:"Screen recorder",s:"shot",d:"Recording the screen as video. The system shows an indicator while it runs.",t:"Start a recording. Where does the indicator appear?"},
+ {id:"nearby",n:"Nearby sharing",ios:"AirDrop",and:"Quick Share",s:"share",d:"Sending files to devices close by, without a network.",t:"Send a photo to a classmate's phone. Does it work across platforms?"},
+ {id:"wallet",n:"Wallet and passes",ios:"Wallet, Apple Pay",and:"Google Wallet, Samsung Wallet",s:"wallet",d:"Cards, tickets, IDs and passes held by the system.",t:"What is in your wallet app besides payment cards?"},
+ {id:"sos",n:"Emergency SOS and Medical ID",ios:"Emergency SOS, Medical ID",and:"Emergency SOS, medical info",s:"power",d:"Calling for help and showing medical details without unlocking.",t:"Find where your emergency contacts are set. Do not trigger a call."},
+ {id:"battstate",hl:["batt-low","batt-saver"],n:"Battery states",ios:"Low Power Mode, Battery Health",and:"Battery Saver, battery health",s:"battery",d:"Low power mode, charging state and battery health change how the whole phone behaves.",t:"Turn on low power mode. What looks or behaves differently?"},
+ {id:"update",n:"Software update prompt",ios:"Software Update",and:"System update",s:"update",d:"The system asking to install a new version.",t:"Which OS version are you on? Is an update waiting?"},
+ {id:"screentime",n:"Usage limits",ios:"Screen Time",and:"Digital Wellbeing",s:"screentime",d:"System limits on app use, with a screen that blocks the app when time is up.",t:"Find your daily screen time. Which app is first?"}]);
+ext("Settings",[
+ {id:"settings",n:"Settings app",ios:"Settings",and:"Settings",s:"settings",d:"A deep list of everything the system lets you change.",t:"How many taps to reach text size from the top of Settings?"},
+ {id:"set-search",n:"Settings search",ios:"Settings search",and:"Settings search",s:"settings",d:"Search inside Settings, because nobody remembers where things are.",t:"Search for vibration. How many results?"},
+ {id:"appsettings",hl:"nset",n:"Per-app settings page",ios:"App settings page",and:"App info",s:"nset",d:"One page per app for its permissions, notifications and data use.",t:"Open the page for one app. What can you revoke?"},
+ {id:"set-a11y",n:"Accessibility",ios:"Accessibility",and:"Accessibility",s:"settings",d:"Text size, bold text, contrast, reduce motion, screen reader, captions.",t:"Turn on reduce motion. What changes when you open an app?"},
+ {id:"set-display",n:"Display settings",ios:"Display and Brightness",and:"Display",s:"settings",d:"Dark mode, night light, text size and display zoom.",t:"Schedule dark mode. What options do you get?"},
+ {id:"set-lang",n:"Language and region",ios:"Language and Region",and:"Languages, regional preferences",s:"settings",d:"Changes dates, numbers, first day of the week and text direction.",t:"Which date format does your phone use? Where is that set?"},
+ {id:"set-accounts",n:"Accounts and backup",ios:"Apple Account, iCloud",and:"Google Account, backup (Samsung account)",s:"settings",d:"The account the phone is tied to, and what it syncs and backs up.",t:"When did your phone last back up?"}]);
+ext("Components: navigation",[
+ {id:"navdrawer",n:"Side menu",ios:"Sidebar (mostly iPad)",and:"Navigation drawer",s:"navdrawer",d:"A panel of destinations that slides in from the side.",t:"Find an app with a menu button at top left. What is in the drawer?"},
+ {id:"navrail",hl:"navdrawer",x:1,n:"Navigation rail",ios:"Not on iPhone",and:"Navigation rail",s:"navdrawer",d:"A narrow strip of destinations down the side, used on tablets and unfolded foldables.",t:"Open an app on a tablet. Did the bottom bar move to the side?"},
+ {id:"toolbar",n:"Toolbar",ios:"Toolbar",and:"Bottom app bar",s:"store",d:"A row of actions for the current screen, not destinations.",t:"Compare a browser's bottom bar with a tab bar. What is the difference?"}]);
+ext("Components: containment",[
+ {id:"grid",n:"Grid",ios:"Collection / grid",and:"Grid",s:"store",d:"Tiles in rows and columns, for content you recognise by sight.",t:"Open your photos. How many columns? Can you change that?"},
+ {id:"card",n:"Card",ios:"Grouped section, card",and:"Card",s:"store",d:"A bounded block holding one item's content and actions.",t:"Find a card. What happens when you tap it, and is that obvious?"},
+ {id:"carousel",n:"Carousel",ios:"Carousel",and:"Carousel",s:"store",d:"A row that scrolls sideways. A cut-off item hints there is more.",t:"Find one in a store app. How do you know it scrolls?"},
+ {id:"divider",n:"Divider",ios:"Separator",and:"Divider",s:"store",d:"A thin line separating groups of content.",t:"Find a list with dividers and one that uses only spacing."},
+ {id:"expand",n:"Expand and collapse",ios:"Disclosure group",and:"Expansion panel",s:"store",d:"A row that opens to show more underneath.",t:"Find one. Which way does the arrow point when it is closed?"},
+ {id:"modal",n:"Full-screen modal",ios:"Full-screen modal",and:"Full-screen dialog",s:"modal",d:"A task that takes over the screen until you finish or cancel it.",t:"Compose a new email. How do you leave without sending?"}]);
+ext("Components: input and actions",[
+ {id:"context",hl:"quickact",n:"Context menu",ios:"Context menu",and:"Context menu",s:"quickact",d:"Actions for one object, opened by long-pressing it.",t:"Long-press a photo, a link and a message. Compare the menus."},
+ {id:"actionsheet",n:"Action sheet",ios:"Action sheet",and:"Modal bottom sheet",s:"actionsheet",d:"A short list of choices from the bottom, often to confirm something destructive.",t:"Delete a photo. How is the destructive option marked?"},
+ {id:"link",n:"Link",ios:"Link",and:"Text button / link",s:"store",d:"Text that navigates when tapped.",t:"How can you tell text is tappable when it is not underlined?"},
+ {id:"wheel",n:"Wheel picker",ios:"Picker",and:"Uncommon",s:"pickers",d:"Spinning columns of values, common on iPhone for time.",t:"Set a timer. Wheel, keypad or clock face?"},
+ {id:"colorpick",n:"Colour picker",ios:"Color well / picker",and:"No standard component",s:"pickers",d:"Swatches, a spectrum or sliders for choosing a colour.",t:"Find one in a notes or markup tool."}]);
+ext("Components: feedback",[
+ {id:"toast",n:"Toast",ios:"No system component",and:"Toast",s:"feedback",d:"Small transient text with no action. It confirms and disappears.",t:"Copy some text on an Android phone. What appears?"},
+ {id:"refresh",hl:"spinner",n:"Refresh control",ios:"Refresh control",and:"Pull-to-refresh indicator",s:"feedback",d:"The indicator that appears when you pull a list down to reload.",t:"Pull to refresh in two apps. Is the indicator the same?"},
+ {id:"tooltip",n:"Tooltip",ios:"Tooltip / tip popover",and:"Tooltip",s:"store",d:"A small label explaining a control, shown on long press or first use.",t:"Long-press an icon button. Does a label appear?"}]);
+ext("Foundations",[
+ {id:"f-type",n:"Typography",ios:"Dynamic Type",and:"Type scale, font size",s:"foundations",d:"A fixed set of text sizes that scale with the user's text size setting.",t:"Count the distinct text sizes on one screen."},
+ {id:"f-color",n:"Colour roles and themes",ios:"Semantic colours, light and dark",and:"Colour roles, dynamic colour",s:"foundations",d:"Colours named by job (primary, surface, error) so they can swap between themes.",t:"Switch to dark mode. Which colours changed and which stayed?"},
+ {id:"f-icons",n:"Iconography",ios:"SF Symbols",and:"Material Symbols",s:"foundations",d:"One icon family with a consistent weight and grid.",t:"Find the share icon on both platforms. How do they differ?"},
+ {id:"f-space",n:"Spacing and margins",ios:"Layout margins, safe area",and:"Spacing, window insets",s:"foundations",d:"A spacing scale, usually steps of 4 or 8, plus margins that keep content off the edges.",t:"Is the side margin the same in every app you use?"},
+ {id:"f-target",n:"Touch target",ios:"44 pt minimum",and:"48 dp minimum",s:"foundations",d:"The smallest area a finger can hit reliably.",t:"Find a button that is too small to hit. What is it?"},
+ {id:"f-elev",n:"Elevation and blur",ios:"Materials, translucency",and:"Elevation, tonal surfaces",s:"foundations",d:"Shadow, blur and tint that show which surface sits above another.",t:"Open quick toggles. Can you see the screen behind?"},
+ {id:"f-motion",n:"Motion and transitions",ios:"Push, modal, zoom transitions",and:"Shared element, predictive back",s:"foundations",d:"Animation that explains where a screen came from and where it goes.",t:"Open and close an app slowly with a gesture. What does the animation tell you?"}]);
+ext("Component states",[
+ {id:"cs-default",n:"Default",s:"cstates",d:"Enabled and at rest.",t:"Pick one button on your phone. Find it in as many of these states as you can."},
+ {id:"cs-pressed",n:"Pressed",ios:"Highlighted",and:"Pressed (ripple)",s:"cstates",d:"While your finger is down. Android draws a ripple; iOS dims.",t:"Hold a button without lifting. What changes?"},
+ {id:"cs-focused",n:"Focused",s:"cstates",d:"Selected by a keyboard, switch or screen reader.",t:"Connect a keyboard or turn on the screen reader. Where is the focus ring?"},
+ {id:"cs-selected",n:"Selected",s:"cstates",d:"Chosen or switched on.",t:"Find a selected chip or tab. What marks it besides colour?"},
+ {id:"cs-disabled",n:"Disabled",s:"cstates",d:"Visible but unavailable.",t:"Find a disabled button. Does the screen say why?"},
+ {id:"cs-loading",n:"Loading",s:"cstates",d:"Working after a tap. Stops a second tap.",t:"Tap a send or pay button. What does it do while working?"},
+ {id:"cs-error",n:"Error and validation",s:"cstates",d:"Input the app cannot accept, with a message saying why.",t:"Submit a form with a bad email. When does the error appear?"},
+ {id:"cs-dragged",n:"Dragged",s:"cstates",d:"Lifted and moving under your finger.",t:"Drag an app icon. How does it show it is lifted?"}]);
+ext("Screen states",[
+ {id:"onboarding",n:"First run",ios:"Onboarding",and:"Onboarding",s:"onboarding",d:"What a new user sees before there is anything of theirs.",t:"Install a new app. How many screens before you can use it?"},
+ {id:"partial",n:"Partial state",s:"partial",d:"Some content has arrived and more is on the way.",t:"Scroll a feed fast. What do you see at the bottom?"},
+ {id:"appscreen",n:"Ideal state",s:"app",d:"Full of real content. The one state every mockup shows.",t:"Open an app you use daily. Is this the state you see most?"},
+ {id:"denied",n:"Permission denied",s:"denied",d:"A feature after you refused access. A good one explains how to turn it back on.",t:"Refuse camera access to an app, then open its camera feature."},
+ {id:"signedout",n:"Signed out",s:"signedout",d:"What the app offers without an account.",t:"Sign out of one app. What can you still do?"}]);
+ext("Device conditions",[
+ {id:"landscape",hl:"none",rz:90,n:"Portrait and landscape",s:"app",d:"Rotating the phone. Many phone apps do not respond at all.",t:"Rotate your phone in five apps. How many adapt?"},
+ {id:"darkmode",hl:"none",cls:"dkm",n:"Light and dark mode",s:"app",d:"The same screen in the other theme.",t:"Switch themes with an app open. Does anything become hard to read?"},
+ {id:"bigtext",hl:"list",cls:"big",n:"Text size",s:"app",d:"The same screen at a larger text size. Rows grow and text may clip.",t:"Set text to the largest size. What breaks first?"},
+ {id:"lowbatt",n:"Low battery",s:"lowbatt",d:"The system interrupts, and low power mode slows refresh and background work.",t:"What does your phone turn off in low power mode?"},
+ {id:"weak",hl:"status",cls:"weak",n:"Weak or no signal",s:"offline",d:"Slow or missing network. The status bar is the only warning.",t:"Use an app in a lift or basement. How does it cope?"},
+ {id:"call",n:"Interrupted",ios:"Incoming call",and:"Incoming call",s:"call",d:"A call or alarm arriving in the middle of a task.",t:"Have someone call you while you fill in a form. Is your text still there after?"},
+ {id:"resumed",hl:"switcher",n:"Backgrounded and resumed",s:"switcher",d:"Leaving an app and coming back. It may restore or restart.",t:"Leave an app for five minutes and return. Is it where you left it?"},
+ {id:"kbcover",hl:"keyboard",n:"Keyboard open",s:"keyboard",d:"The keyboard covers a third of the screen. The field must stay visible.",t:"Tap the lowest field in a form. Does it move above the keyboard?"},
+ {id:"storagefull",n:"Storage full",s:"storagefull",d:"No room left. Photos, updates and downloads start to fail.",t:"How much free storage do you have?"}]);
+ext("Feedback channels",[
+ {id:"fb-visual",hl:"cs-pressed",n:"Visual",s:"cstates",d:"Highlight, ripple, colour change and animation.",t:"Tap a button with sound and vibration off. How do you know it worked?"},
+ {id:"fb-haptic",hl:"switch",n:"Haptic",ios:"Haptics",and:"Haptics, touch feedback",s:"form",d:"Taps you feel: a click for a switch, a buzz for an error.",t:"Find three different haptic patterns on your phone."},
+ {id:"fb-sound",hl:"volpanel",n:"Sound",s:"volume",d:"Keyboard clicks, send and receive tones, the camera shutter.",t:"Which system sounds can you turn off, and which can you not?"},
+ {id:"fb-spoken",hl:"reader",n:"Spoken",ios:"VoiceOver",and:"TalkBack",s:"reader",d:"The screen reader announcing what is under your finger.",t:"With the screen reader on, touch an icon-only button. What does it say?"}]);
+const ORDER=["System surfaces","On the home and lock screens","System moments","System services","Settings","Components: navigation","Components: containment","Components: input and actions","Components: feedback","Foundations","Component states","Screen states","Device conditions","Feedback channels","States"];
+SW.forEach(g=>{if(g[0]==="States")g[0]="Screen states";});
+{const m={};SW.forEach(([g,i])=>{(m[g]=m[g]||[]).push(...i)});SW.length=0;ORDER.forEach(g=>{if(m[g])SW.push([g,m[g]])});}
+
+
+// ---------- v4: wearables ----------
+const HW_WATCH=[
+ ["Outside",[
+  {id:"w-glass",n:"Crystal",d:"Sapphire or hardened glass over the display. It takes every knock the watch gets.",t:"Tilt your watch under a light. Is the glass flat or domed at the edges?"},
+  {id:"w-display",n:"Display and touch",d:"A small OLED with a touch layer. Many stay dimly lit all day.",t:"Lower your wrist. Does the screen turn off or dim?"},
+  {id:"w-als",n:"Ambient light sensor",d:"Sits under the display and sets brightness for the room.",t:"Cover the watch face with your palm, then uncover it in bright light. Does brightness change?"},
+  {id:"w-case",n:"Case",d:"Aluminium, steel or titanium housing, sealed against water.",t:"Find the water resistance rating printed on the back."},
+  {id:"w-crown",n:"Crown or bezel",d:"A rotating control for scrolling without covering the screen. Some watches use a rotating bezel instead.",t:"Scroll a list with the crown or bezel, then with your finger. Which is more precise?"},
+  {id:"w-button",n:"Side button",d:"A second physical control, usually for apps, payment or emergency calls.",t:"Press, double-press and hold it. List what each does."},
+  {id:"w-band",n:"Band and lugs",d:"The strap and its attachment. Fit matters: loose bands give bad sensor readings.",t:"Loosen your band two holes and check your heart rate. Does it still read?"},
+  {id:"w-speaker",n:"Speaker",d:"Slots on the side for calls, alerts and ejecting water after a swim.",t:"Find the speaker slots. Is there a water eject function?"},
+  {id:"w-mic",n:"Microphone",d:"A pinhole for calls, dictation and measuring ambient noise.",t:"Does your watch have a noise or sound level app?"}]],
+ ["Health sensors",[
+  {id:"w-back",n:"Back crystal",d:"The dome that touches your skin. Every optical and electrical sensor looks through it.",t:"Turn your watch over. How many separate windows can you count?"},
+  {id:"w-ppg",n:"Optical heart sensor",d:"Measures heart rate. Green LEDs shine into the skin; blood absorbs green light, so the reflection pulses with each beat. The method is called PPG.",t:"Start a workout and look under the watch. What colour is the light?"},
+  {id:"w-spo2",n:"Blood oxygen sensor",d:"Red and infrared LEDs. Oxygen-rich and oxygen-poor blood absorb them differently.",t:"Take a blood oxygen reading. Why does it ask you to hold still?"},
+  {id:"w-pd",n:"Photodiodes",d:"Light detectors arranged around the LEDs. They measure what comes back from the skin.",t:"Why are there several detectors instead of one?"},
+  {id:"w-ecg",n:"Electrical heart sensor",d:"Electrodes on the back and on the crown. Touching the crown closes a circuit across your chest for an ECG.",t:"Take an ECG. Which finger and which part of the watch complete the circuit?"},
+  {id:"w-temp",n:"Skin temperature sensor",d:"Tracks small overnight changes at the wrist, used for sleep and cycle tracking.",t:"Find your wrist temperature data. Is it a number or a deviation from baseline?"}]],
+ ["Inside",[
+  {id:"w-sip",n:"Processor",d:"A system in package: processor, memory and storage sealed into one block.",t:"Look up which chip your watch uses."},
+  {id:"w-imu",n:"Accelerometer and gyroscope",d:"Detect raise to wake, steps, swim strokes, falls and crashes.",t:"Raise your wrist slowly, then quickly. Which wakes the screen?"},
+  {id:"w-baro",n:"Barometric altimeter",d:"Measures air pressure to count flights of stairs and elevation.",t:"Climb one flight of stairs. Does the watch count it?"},
+  {id:"w-compass",n:"Compass",d:"A magnetometer for heading and backtracking a route.",t:"Open the compass and hold the watch near a magnet or laptop. What happens?"},
+  {id:"w-radios",n:"GPS and radios",d:"GPS for routes without a phone, plus Bluetooth, Wi-Fi, NFC for payment, and on some models cellular and ultra-wideband.",t:"Leave your phone behind for a walk. What still works?"},
+  {id:"w-haptic",n:"Haptic motor",d:"A linear motor that taps your wrist. On a watch it replaces most sounds.",t:"Find three different tap patterns. Can you tell them apart without looking?"},
+  {id:"w-battery",n:"Battery",d:"Fills most of the case. Typically one to two days; longer on fitness watches.",t:"How long does yours last? What uses the most?"},
+  {id:"w-coil",n:"Charging coil",d:"A coil behind the back crystal that charges on a magnetic puck.",t:"Does your watch charge on a phone's wireless charger? Why or why not?"}]]
+];
+const HW_RING=[
+ ["Outside",[
+  {id:"r-shell",n:"Outer shell",d:"A titanium band. There is no screen, button or speaker: everything is read on the phone.",t:"What does a ring have to give up, compared with a watch?"},
+  {id:"r-liner",n:"Inner lining",d:"Clear, skin-safe resin over the electronics, so light can pass and sweat cannot.",t:"Look through the inside of a smart ring. What can you see?"},
+  {id:"r-domes",n:"Sensor windows",d:"Raised bumps on the inside that press the sensors against the underside of the finger.",t:"Which way round should the bumps sit on the finger? Why the palm side?"}]],
+ ["Sensors",[
+  {id:"r-ppg",n:"Green LED",d:"Reads heart rate by day, the same optical method a watch uses.",t:"Why might a finger give a cleaner pulse reading than a wrist?"},
+  {id:"r-spo2",n:"Red and infrared LEDs",d:"Read heart rate variability and blood oxygen during sleep. They are invisible or dim, so they do not wake you.",t:"Check a ring's sleep data. Which measurements only appear overnight?"},
+  {id:"r-pd",n:"Photodiodes",d:"Detect the light that returns through the finger.",t:"Why does a ring need to fit tightly to work?"},
+  {id:"r-temp",n:"Skin temperature sensor",d:"Reads finger temperature through the night for illness, recovery and cycle tracking.",t:"Is temperature shown as an absolute number or a change from your normal?"},
+  {id:"r-imu",n:"Accelerometer",d:"Detects movement, steps and when you are asleep.",t:"How does a ring know you are asleep without a screen or button?"}]],
+ ["Inside",[
+  {id:"r-battery",n:"Curved battery",d:"A thin cell bent around part of the band. Lasts several days because there is no display.",t:"How many days does a smart ring last? Compare with your watch."},
+  {id:"r-pcb",n:"Flexible circuit",d:"A circuit board printed on a bendable strip that wraps the finger.",t:"Why can a ring not be resized like jewellery?"},
+  {id:"r-soc",n:"Bluetooth chip",d:"A small processor and radio. It stores readings and syncs them to the phone.",t:"Does the ring work with the phone out of range? When does the data arrive?"},
+  {id:"r-charge",n:"Charging coil",d:"Charges by induction on a small post or in a case.",t:"How long does a ring take to charge?"}]]
+];
+const HW_GLASSES=[
+ ["Frame",[
+  {id:"g-frame",n:"Frame front",d:"Looks like ordinary glasses on purpose. The thicker corners hide cameras and sensors.",t:"Compare smart glasses with regular ones. Where is the extra thickness?"},
+  {id:"g-temple",n:"Temple arms",d:"The arms hold the battery, chips and speakers, so they are thicker than usual.",t:"Which arm is heavier? What might be inside it?"},
+  {id:"g-hinge",n:"Hinge",d:"Folding the arms often switches the glasses off, using a small sensor in the hinge.",t:"Fold and unfold a pair. Is there a sound or light?"},
+  {id:"g-nose",n:"Nose pads",d:"Carry the weight. Some models sense when the glasses are on your face.",t:"Take smart glasses off mid-song. Does the audio pause?"},
+  {id:"g-lens",n:"Lenses",d:"Prescription, tinted or light-adaptive, the same as ordinary glasses.",t:"Can the lenses be swapped for a prescription?"}]],
+ ["Seeing and showing",[
+  {id:"g-camera",n:"Camera",d:"Sits in the frame corner and sees roughly what you see, for photos, video and asking an assistant about the scene.",t:"Where is the camera on the pair in front of you? Is there one or two?"},
+  {id:"g-led",n:"Capture light",d:"Lights up while recording so other people know. A privacy signal, not a flash.",t:"Start recording. How visible is the light in daylight?"},
+  {id:"g-als",n:"Ambient light sensor",d:"Reads the surroundings to set display and capture-light brightness.",t:"What happens to the capture light if you cover it?"},
+  {id:"g-display",n:"In-lens display",d:"A transparent waveguide that shows text or images in part of one lens. Many smart glasses have no display at all.",t:"Does the pair in front of you have a display? In one eye or both?"},
+  {id:"g-projector",n:"Projector",d:"A tiny light engine in the arm that feeds the image into the lens.",t:"Look at the lens from the outside while it is on. Can others see the image?"},
+  {id:"g-eye",x:1,n:"Eye tracking cameras",d:"Small infrared cameras on the inside of the rims that follow your gaze. Found on a few models.",t:"What could an interface do if it knew where you were looking?"}]],
+ ["Hearing and control",[
+  {id:"g-mic",n:"Microphone array",d:"Several microphones around the frame pick out your voice from the noise around you.",t:"Find every microphone hole on the frame."},
+  {id:"g-speaker",n:"Open-ear speakers",d:"Slots under the arms aim sound at your ears without blocking them.",t:"Play audio at half volume. Can someone beside you hear it?"},
+  {id:"g-touch",n:"Touch surface",d:"A touch-sensitive strip on the arm for tap, swipe and hold.",t:"Which gestures does the arm accept? How did you learn them?"}]],
+ ["Inside",[
+  {id:"g-imu",n:"Motion sensors",d:"Accelerometer and gyroscope for head movement, stabilising video and detecting wear.",t:"Nod or shake your head. Does anything respond?"},
+  {id:"g-soc",n:"Processor board",d:"A long, narrow board in one arm with the processor and radios.",t:"What do the glasses do on their own, and what needs the phone?"},
+  {id:"g-battery",n:"Batteries",d:"Small cells in the arms. A few hours of use, topped up in the case.",t:"How long does a pair last on a charge?"},
+  {id:"g-charge",n:"Charging contacts",d:"Metal contacts near the hinge that meet pins in the charging case.",t:"Find the contacts. Where do they touch the case?"}]]
+];
+const HW_EARBUDS=[
+ ["Outside",[
+  {id:"e-shell",n:"Housing",d:"A sealed shell shaped to sit in the bowl of the ear, with a stem that brings a microphone closer to the mouth.",t:"Do your earbuds have a stem? What sits at the end of it?"},
+  {id:"e-tip",n:"Ear tip",d:"Silicone that seals the ear canal. Without a seal, bass and noise cancelling both fail.",t:"Run the ear tip fit test, if your earbuds have one. What is it measuring?"},
+  {id:"e-vent",n:"Pressure vent",d:"A small opening that relieves the plugged-ear feeling.",t:"Find a mesh-covered hole that is not a microphone."},
+  {id:"e-charge",n:"Charging contacts",d:"Metal at the base that meets pins in the case.",t:"Where do your earbuds touch the case?"}]],
+ ["Sensors",[
+  {id:"e-mic-ff",n:"Outward microphone",d:"Listens to the world. Noise cancelling plays the opposite of what it hears; transparency mode passes it through.",t:"Switch between noise cancelling and transparency. Tap the outer microphone lightly in each."},
+  {id:"e-mic-fb",n:"Inward microphone",d:"Sits inside, facing the ear canal, and checks what noise is left so cancelling can correct itself.",t:"Why would an earbud need a microphone pointing at your eardrum?"},
+  {id:"e-mic-voice",n:"Voice microphone",d:"At the end of the stem, aimed at your mouth for calls.",t:"Record a voice memo outdoors. How much wind do you hear?"},
+  {id:"e-wear",n:"In-ear detection",d:"An optical or skin sensor that knows when the bud is in your ear, to pause and resume audio.",t:"Take one earbud out. What happens to the music? Put it in your pocket: does it resume?"},
+  {id:"e-imu",n:"Motion sensors",d:"An accelerometer and gyroscope for head tracking and spatial audio. Some also detect speech through jaw vibration.",t:"Turn on spatial audio and turn your head. Where does the sound stay?"},
+  {id:"e-force",n:"Stem sensor",d:"A force or touch sensor on the stem. Squeeze, tap or swipe to control playback.",t:"List every gesture your earbuds accept. Which ones do you trigger by accident?"}]],
+ ["Inside",[
+  {id:"e-driver",n:"Speaker driver",d:"A small diaphragm that makes the sound, aimed down the ear canal.",t:"Look into the nozzle with the tip off. What covers the driver?"},
+  {id:"e-battery",n:"Battery",d:"A button-sized cell. Four to eight hours, refilled by the case.",t:"How long do your earbuds last? How many refills does the case hold?"},
+  {id:"e-chip",n:"Audio chip",d:"Handles Bluetooth, noise cancelling and pairing.",t:"Do your earbuds switch between your devices on their own?"},
+  {id:"e-antenna",n:"Antenna",d:"Runs down the stem, away from the head, which absorbs radio signals.",t:"Put your phone in a back pocket and walk. Does the audio drop?"}]],
+ ["Varies by product",[
+  {id:"e-case",hl:"e-charge",x:1,n:"Charging case",d:"Holds a larger battery, a lid sensor that starts pairing, a status light, and on some a speaker and locator chip.",t:"Open the case near your phone. What appears on screen?"},
+  {id:"e-oe-cup",hl:"e-wear",x:1,n:"Ear cup sensors",d:"Over-ear headphones detect wear with sensors inside the cup, and which way round they are on.",t:"Lift one ear cup. Does playback pause?"},
+  {id:"e-oe-dial",hl:"e-force",x:1,n:"Dial and buttons",d:"Over-ear headphones have room for a physical dial and buttons in place of stem gestures.",t:"Compare changing volume on headphones and on earbuds. Which is easier?"},
+  {id:"e-health",hl:"e-wear",x:1,n:"Heart rate and temperature",d:"A few earbuds add an optical heart sensor or a temperature sensor, since the ear is a good place to read both.",t:"Check whether your earbuds report heart rate during a workout."}]]
+];
+const HWDEV={phone:{name:"Phone",groups:HW},watch:{name:"Watch",groups:HW_WATCH},ring:{name:"Ring",groups:HW_RING},glasses:{name:"Glasses",groups:HW_GLASSES},earbuds:{name:"Earbuds",groups:HW_EARBUDS}};
+
+// ---------- state ----------
+const $=s=>document.querySelector(s), stage=$("#stage"), screen=$("#screen"), ex=$("#ex");
+const flat=g=>g.flatMap(([grp,items])=>items.map(it=>({...it,grp})));
+const DATA={in:flat(IN),sw:flat(SW)};
+for(const k in HWDEV)HWDEV[k].items=flat(HWDEV[k].groups);
+const LABEL={hw:"Hardware",in:"Input",sw:"Software",ix:"Index"}, HASH={hw:"hardware",in:"input",sw:"software",ix:"index"};
+let mode="hw", dev="phone", sel={in:"tap",sw:"home"}, rx=12, ry=-32, e=0, done={};
+const selHW={phone:"frontcam",watch:"w-crown",ring:"r-ppg",glasses:"g-camera",earbuds:"e-mic-ff"};
+const C={rx:12,ry:-32,rz:0,e:0};
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+try{done=JSON.parse(localStorage.getItem("pal-done")||"{}")}catch(_){}
+const save=()=>{try{localStorage.setItem("pal-done",JSON.stringify(done))}catch(_){}};
+const list=()=>mode==="hw"?HWDEV[dev].items:DATA[mode==="ix"?"sw":mode];
+const groups=()=>mode==="hw"?HWDEV[dev].groups:mode==="in"?IN:SW;
+const curId=()=>mode==="hw"?selHW[dev]:sel[mode];
+const cur=()=>list().find(i=>i.id===curId())||list()[0];
+const active=()=>mode==="hw"?dev:"phone";
+const pad=n=>String(n).padStart(3,"0");
+
+// ---------- WebGL models ----------
+let G=null, drag=null, G_touch=null;
+function build(){
+  const T=THREE, rad=T.MathUtils.degToRad, PI=Math.PI, H=PI/2;
+  const renderer=new T.WebGLRenderer({canvas:$("#gl"),antialias:true,alpha:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  renderer.outputEncoding=T.sRGBEncoding;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.1;
+  const scene=new T.Scene(), camera=new T.PerspectiveCamera(26,1,50,9000);
+  const env=new T.Scene();
+  env.add(new T.Mesh(new T.SphereGeometry(40,16,8),new T.MeshBasicMaterial({color:0x040405,side:T.BackSide})));
+  const panel=(w,h,x,y,z,c,k)=>{const m=new T.Mesh(new T.PlaneGeometry(w,h),new T.MeshBasicMaterial({color:new T.Color(c).multiplyScalar(k),side:T.DoubleSide}));m.position.set(x,y,z);m.lookAt(0,0,0);env.add(m)};
+  panel(16,9,-10,11,9,0xffffff,5);panel(3,18,13,3,-7,0xb9ccff,6);panel(12,3,0,-13,5,0xffffff,.6);panel(5,5,9,5,11,0xffe9d2,1.2);panel(4,14,-13,-2,-8,0x9fb4ff,2.5);
+  scene.environment=new T.PMREMGenerator(renderer).fromScene(env,0.035).texture;
+  const key=new T.DirectionalLight(0xffffff,.35);key.position.set(-.7,1,.9);scene.add(key);
+  const rim=new T.DirectionalLight(0xa9c0ff,.6);rim.position.set(1,.3,-1);scene.add(rim);
+  scene.add(new T.AmbientLight(0xffffff,.06));
+
+  const M=o=>new T.MeshStandardMaterial(o);
+  const MAT={
+    frame:M({color:0x34363a,metalness:1,roughness:.42}),
+    btn:M({color:0x3f4146,metalness:1,roughness:.36}),
+    band:M({color:0x1d1e21,metalness:0,roughness:.6}),
+    hole:M({color:0x020203,metalness:.2,roughness:.8}),
+    glass:new T.MeshPhysicalMaterial({color:0xffffff,metalness:0,roughness:.04,transparent:true,opacity:.13,envMapIntensity:1.6,depthWrite:false}),
+    panel:M({color:0x050608,metalness:.3,roughness:.16}),
+    back:new T.MeshPhysicalMaterial({color:0x0b0c0e,metalness:.35,roughness:.58,clearcoat:.35,clearcoatRoughness:.5,envMapIntensity:.75}),
+    bump:new T.MeshPhysicalMaterial({color:0x101114,metalness:.5,roughness:.4,clearcoat:.4,clearcoatRoughness:.3,envMapIntensity:.9}),
+    ring:M({color:0x3c3e43,metalness:1,roughness:.3}),
+    lens:M({color:0x070b1c,metalness:.9,roughness:.04,envMapIntensity:2}),
+    pcb:M({color:0x0f3328,metalness:.15,roughness:.62}),
+    shield:M({color:0x70737a,metalness:1,roughness:.42}),
+    chip:M({color:0x16171a,metalness:.3,roughness:.5}),
+    batt:M({color:0x1b1c20,metalness:.55,roughness:.46}),
+    motor:M({color:0x7d8087,metalness:1,roughness:.3}),
+    plastic:M({color:0x141518,metalness:.1,roughness:.6}),
+    copper:M({color:0xb26e36,metalness:1,roughness:.32}),
+    gold:M({color:0xbf9a45,metalness:1,roughness:.3}),
+    magnet:M({color:0x74777e,metalness:1,roughness:.45}),
+    flex:M({color:0xa85a1c,metalness:.2,roughness:.5}),
+    flash:M({color:0xd9c98a,metalness:0,roughness:.35,emissive:0x1c1704}),
+    led:M({color:0x35d07f,emissive:0x1b8a50,roughness:.4}),
+    ledG:M({color:0x2fe07a,emissive:0x18a050,emissiveIntensity:1.2,roughness:.3}),
+    ledR:M({color:0xff4a3a,emissive:0xa01c10,emissiveIntensity:1.2,roughness:.3}),
+    ledW:M({color:0xffffff,emissive:0x777777,roughness:.3}),
+    acetate:new T.MeshPhysicalMaterial({color:0x0c0c0e,metalness:.1,roughness:.28,clearcoat:.6,clearcoatRoughness:.2}),
+    lensG:new T.MeshPhysicalMaterial({color:0xcfd8e6,metalness:0,roughness:.03,transparent:true,opacity:.22,envMapIntensity:1.8,depthWrite:false}),
+    wave:M({color:0x7fe3c0,emissive:0x1f6e58,transparent:true,opacity:.5,roughness:.2,depthWrite:false}),
+    liner:new T.MeshPhysicalMaterial({color:0x20232b,metalness:.1,roughness:.15,transparent:true,opacity:.5,depthWrite:false}),
+    pad:M({color:0x26272b,metalness:.2,roughness:.75}),
+    tip:M({color:0x2b2c30,metalness:0,roughness:.8,side:T.DoubleSide}),
+    bud:new T.MeshPhysicalMaterial({color:0x17181b,metalness:.15,roughness:.3,clearcoat:.5,clearcoatRoughness:.25,side:T.DoubleSide})
+  };
+
+  const rr=(w,h,r)=>{const s=new T.Shape(),x=-w/2,y=-h/2;s.moveTo(x+r,y);s.lineTo(x+w-r,y);s.absarc(x+w-r,y+r,r,-PI/2,0,false);s.lineTo(x+w,y+h-r);s.absarc(x+w-r,y+h-r,r,0,PI/2,false);s.lineTo(x+r,y+h);s.absarc(x+r,y+h-r,r,PI/2,PI,false);s.lineTo(x,y+r);s.absarc(x+r,y+r,r,PI,1.5*PI,false);return s};
+  const ext=(shape,d,b)=>{const g=new T.ExtrudeGeometry(shape,{depth:d-2*b,bevelEnabled:b>0,bevelSize:b,bevelThickness:b,bevelSegments:3,curveSegments:28});g.translate(0,0,-(d-2*b)/2);return g};
+  const slab=(w,h,r,d,b=0)=>ext(rr(w-2*b,h-2*b,Math.max(.1,r-b)),d,b);
+  const box=(w,h,d)=>slab(w,h,Math.min(w,h)*.18,d,Math.min(w,h,d)*.12);
+  const cube=(w,h,d)=>new T.BoxGeometry(w,h,d);
+  const cyl=(r,h)=>new T.CylinderGeometry(r,r,h,36);
+  const arc=(r0,r1,a0,a1)=>{const s=new T.Shape();s.absarc(0,0,r1,a0,a1,false);s.absarc(0,0,r0,a1,a0,true);s.closePath();return s};
+  const annulus=(r0,r1)=>{const s=new T.Shape();s.absarc(0,0,r1,0,2*PI,false);const h=new T.Path();h.absarc(0,0,r0,0,2*PI,true);s.holes.push(h);return s};
+  const label=(text,w,h,bg,fg)=>{const c=document.createElement("canvas");c.width=256;c.height=Math.max(32,Math.round(256*h/w));const x=c.getContext("2d");x.fillStyle=bg;x.fillRect(0,0,c.width,c.height);x.fillStyle=fg;x.font="600 "+Math.min(34,c.height*.36)+"px monospace";x.textAlign="center";x.textBaseline="middle";text.split("\n").forEach((l,i,a)=>x.fillText(l,128,c.height/2+(i-(a.length-1)/2)*c.height*.4));const t=new T.CanvasTexture(c);t.encoding=T.sRGBEncoding;return new T.MeshStandardMaterial({map:t,metalness:.3,roughness:.5})};
+
+  const DEV={};
+  let layers,parts,pickables,root;
+  const begin=(name,fit)=>{root=new T.Group();scene.add(root);layers=[];parts={};pickables=[];DEV[name]={root,layers,parts,pickables,fit,tags:[]};};
+  const layer=(name,i,p0,p1,flags)=>{const g=new T.Group();if(typeof p0==="number"){p0=[0,0,p0];p1=[0,0,p1]}g.userData=Object.assign({p0,p1,name,i},flags||{});root.add(g);layers.push(g);return g};
+  const add=(g,geo,mat,p,x=0,y=0,z=0,o={})=>{const m=new T.Mesh(geo,mat.clone());m.position.set(x,y,z);if(o.rx)m.rotation.x=o.rx;if(o.ry)m.rotation.y=o.ry;if(o.rz)m.rotation.z=o.rz;g.add(m);geo.computeBoundingSphere();m.userData.k=Math.max(.045,Math.min(1,15/geo.boundingSphere.radius));if(p){m.userData.p=p;(parts[p]=parts[p]||[]).push(m);if(!o.nopick)pickables.push(m)}return m};
+  const polar=(g,geo,mat,p,a,r,z=0)=>add(g,geo,mat,p,Math.cos(a)*r,Math.sin(a)*r,z,{rz:a-H});
+
+  // ===== phone =====
+  begin("phone",{h:600,w:310,eh:20,ew:330,def:[12,-32],front:[5,-14],ex:[12,-64],back:[8,160]});
+  // back panel and camera bump (faces -z)
+  const Lb=layer("Back panel, camera bump",0,-10.4,-280);
+  add(Lb,slab(246,516,38,1.8,.5),MAT.back,"back");
+  add(Lb,slab(112,118,26,4.5,1.2),MAT.bump,"rearcams",53,185,-2.6);
+  [[75,212],[75,160]].forEach(([x,y])=>{add(Lb,cyl(23,3),MAT.ring,"rearcams",x,y,-5.6,{rx:H});add(Lb,cyl(18,3.4),MAT.hole,"rearcams",x,y,-5.8,{rx:H});add(Lb,cyl(11,3.8),MAT.lens,"rearcams",x,y,-6,{rx:H});});
+  add(Lb,cyl(9,2),MAT.flash,"flash",26,219,-5,{rx:H});
+  add(Lb,cyl(7,2),MAT.lens,"depth",26,151,-5,{rx:H});
+  add(Lb,cyl(1.6,2),MAT.hole,"mic",9,185.5,-4.6,{rx:H});
+
+  // charging coil, magnets, NFC
+  const Lc=layer("Charging coil, magnets, NFC",1,-7.6,-190);
+  add(Lc,cyl(84,.5),M({color:0x101114,metalness:.2,roughness:.7}),null,0,0,.4,{rx:H});
+  for(let r=30;r<=62;r+=4)add(Lc,new T.TorusGeometry(r,1.5,8,72),MAT.copper,"coil",0,0,0);
+  for(let i=0;i<18;i++){const a=i/18*2*PI;add(Lc,box(10,15,2.4),MAT.magnet,"magnets",Math.cos(a)*76,Math.sin(a)*76,0,{rz:a});}
+  {const s=rr(112,72,14);s.holes.push(rr(104,64,10));add(Lc,ext(s,1,0),MAT.gold,"nfc",0,189,0);const s2=rr(98,58,8);s2.holes.push(rr(92,52,5));add(Lc,ext(s2,1,0),MAT.gold,"nfc",0,189,0);}
+
+  // logic board, battery, modules
+  const Ld=layer("Logic board, battery, motor",2,-1.5,-100);
+  add(Ld,slab(124,150,10,1.8,0),MAT.pcb,null,-49,169,0);
+  add(Ld,slab(64,40,6,1.8,0),MAT.pcb,null,-62,-140,0);
+  const chip=(p,txt,w,h,x,y,sh)=>{add(Ld,box(w,h,3.4),sh?MAT.shield:MAT.chip,p,x,y,2.4);const m=add(Ld,new T.PlaneGeometry(w-6,h-6),MAT.chip,p,x,y,4.2);m.material=label(txt,w,h,sh?"#70737a":"#1a1b1f",sh?"#1c1d20":"#b9bec8");if(sh){m.material.metalness=.9;m.material.roughness=.35}};
+  chip("soc","SoC",50,50,-76,207,false);chip("storage","RAM\nFLASH",44,30,-21,217,false);chip("radios","MODEM\nWi-Fi BT",60,34,-71,155,true);chip("motion","IMU",30,26,-16,177,false);
+  for(const [x,y] of [[-104,110],[-20,110],[-20,150],[-100,236]])add(Ld,box(8,5,2),MAT.shield,null,x,y,2);
+  [[75,212],[75,160]].forEach(([x,y])=>{add(Ld,box(48,48,7),MAT.shield,"rearcams",x,y,0);add(Ld,cyl(19,4),MAT.chip,"rearcams",x,y,-4.5,{rx:H});add(Ld,cyl(11,4.4),MAT.lens,"rearcams",x,y,-4.6,{rx:H});add(Ld,cyl(14,1),MAT.chip,"rearcams",x,y,3.8,{rx:H});});
+  add(Ld,slab(194,228,12,6.5,1.5),MAT.batt,"battery",0,-32,0);
+  {const m=add(Ld,new T.PlaneGeometry(120,36),MAT.batt,"battery",0,-32,3.4);m.material=label("BATTERY  Li-ion",120,36,"#1b1c20","#8a8e97");}
+  add(Ld,slab(18,60,2,.8,0),MAT.flex,null,-60,94,1.5);
+  add(Ld,slab(12,44,2,.8,0),MAT.flex,null,30,96,1.5);
+  add(Ld,box(70,30,7.5),MAT.motor,"haptic",-64,-175,0);
+  {const m=add(Ld,new T.PlaneGeometry(56,16),MAT.motor,"haptic",-64,-175,3.9);m.material=label("HAPTIC",56,16,"#7d8087","#1f2023");m.material.metalness=.9;}
+  add(Ld,box(74,40,7.5),MAT.plastic,"speaker",62,-176,0);
+  for(let i=0;i<4;i++)add(Ld,box(4,26,1),MAT.hole,"speaker",44+i*12,-176,3.6);
+  add(Ld,box(38,22,6.5),MAT.shield,"usbc",0,-213,0);
+  for(const [x,y] of [[-112,246],[112,246],[-112,-246],[112,-246],[-112,0],[112,0]])add(Ld,cyl(3,2),MAT.shield,null,x,y,0,{rx:H});
+
+  // frame, buttons, ports
+  const Lf=layer("Frame, buttons, ports",3,0,0);
+  {const s=rr(247,517,38.5);s.holes.push(rr(238,508,34));add(Lf,ext(s,21,1.5),MAT.frame,"frame");}
+  add(Lf,box(3.4,64,9),MAT.btn,"power",125.6,68,0);
+  add(Lf,box(3.4,34,9),MAT.btn,"camkey",125.6,-97,0);
+  add(Lf,box(3.4,22,9),MAT.btn,"action",-125.6,147,0);
+  add(Lf,box(3.4,42,9),MAT.btn,"volume",-125.6,95,0);add(Lf,box(3.4,42,9),MAT.btn,"volume",-125.6,45,0);
+  add(Lf,box(1,54,11),MAT.btn,"sim",-125,-107,0);add(Lf,cyl(.9,1.4),MAT.hole,"sim",-125.2,-140,0,{rz:H});
+  for(const [x,y] of [[125,194],[125,-180],[-125,194],[-125,-180]])add(Lf,new T.BoxGeometry(1.2,4,21.4),MAT.band,"antenna",x,y,0);
+  add(Lf,slab(38,9,4.5,1.4,0),MAT.hole,"usbc",0,-260.2,0,{rx:H});
+  for(let i=0;i<5;i++)add(Lf,cyl(1.7,1.4),MAT.hole,"speaker",38+i*7,-260.3,0);
+  add(Lf,cyl(1.7,1.4),MAT.hole,"mic",-42,-260.3,0);
+  add(Lf,cyl(1.7,1.4),MAT.hole,"mic",37.5,260.3,0);
+  add(Lf,cyl(5.5,1.4),MAT.hole,"jack",-51.5,260.3,0);
+
+  // display
+  const Lp=layer("Display and touch sensor",4,8.4,110);
+  add(Lp,slab(240,510,35,2.4,.4),MAT.panel,"display");
+  {const c=document.createElement("canvas");c.width=240;c.height=510;const x=c.getContext("2d");x.strokeStyle="rgba(140,185,255,.9)";x.lineWidth=1;for(let i=0;i<=240;i+=15){x.beginPath();x.moveTo(i+.5,0);x.lineTo(i+.5,510);x.stroke()}for(let j=0;j<=510;j+=15){x.beginPath();x.moveTo(0,j+.5);x.lineTo(240,j+.5);x.stroke()}
+   const m=new T.Mesh(ext(rr(238,508,34),.1,0),new T.MeshBasicMaterial({map:new T.CanvasTexture(c),transparent:true,opacity:.16,depthWrite:false}));const uv=m.geometry.attributes.uv;for(let i=0;i<uv.count;i++)uv.setXY(i,(uv.getX(i)+119)/238,(uv.getY(i)+254)/508);m.position.z=1.35;Lp.add(m);m.userData.p="touch";parts.touch=[m];G_touch=m;}
+  add(Lp,new T.TorusGeometry(20,.8,8,48),M({color:0x9dbdff,emissive:0x23407a,roughness:.4}),"fingerprint",0,-159,1.4);
+  add(Lp,cyl(7.4,1),MAT.hole,"frontcam",0,237.5,1.3,{rx:H});add(Lp,cyl(4,1.2),MAT.lens,"frontcam",0,237.5,1.4,{rx:H});
+  add(Lp,cyl(3.4,1),M({color:0x1c2233,metalness:.6,roughness:.2}),"prox",23.5,237.5,1.3,{rx:H});
+  add(Lp,cyl(2.4,1),MAT.led,"led",-33.5,237.5,1.3,{rx:H});
+  add(Lp,slab(46,3,1.5,1,0),M({color:0x25282f,metalness:.6,roughness:.5}),"earpiece",0,253.4,1.2);
+  {const pts=rr(226,448,24).getPoints(12).map(p=>new T.Vector3(p.x,p.y,0));const l=new T.LineLoop(new T.BufferGeometry().setFromPoints(pts),new T.LineDashedMaterial({color:0xffffff,dashSize:6,gapSize:5,transparent:true,opacity:.4}));l.computeLineDistances();l.position.set(0,-7,1.5);Lp.add(l);l.userData.p="safearea";parts.safearea=[l];}
+  const anchor=new T.Object3D();anchor.position.z=1.7;Lp.add(anchor);
+
+  // cover glass
+  const Lg=layer("Cover glass",5,10.2,190);
+  add(Lg,slab(246,516,38,1.2,.4),MAT.glass,"glass",0,0,0,{nopick:true});
+
+
+  Lb.userData.back=1;Lc.userData.inner=1;Ld.userData.inner=1;
+
+  // ===== watch =====
+  begin("watch",{h:440,w:330,eh:0,ew:230,def:[10,-30],ex:[12,-62],back:[8,155]});
+  {
+    const s=layer("Back crystal, health sensors",0,-21,-170,{back:1});
+    add(s,cyl(66,5),MAT.back,"w-back",0,0,0,{rx:H});
+    add(s,cyl(42,1.6),MAT.lens,"w-back",0,0,-2.8,{rx:H});
+    [[0,13],[0,-13]].forEach(([x,y])=>add(s,cyl(6,1.2),MAT.ledG,"w-ppg",x,y,-4,{rx:H}));
+    [[13,0],[-13,0]].forEach(([x,y])=>add(s,cyl(6,1.2),MAT.ledR,"w-spo2",x,y,-4,{rx:H}));
+    for(let i=0;i<4;i++){const a=PI/4+i*H;add(s,box(12,12,1.4),MAT.hole,"w-pd",Math.cos(a)*29,Math.sin(a)*29,-4,{rz:a});}
+    add(s,ext(arc(50,58,rad(100),rad(260)),1.6,0),MAT.shield,"w-ecg",0,0,-3);
+    add(s,ext(arc(50,58,rad(-80),rad(80)),1.6,0),MAT.shield,"w-ecg",0,0,-3);
+    add(s,cyl(4,1.4),MAT.gold,"w-temp",0,0,-4.1,{rx:H});
+    const p=layer("Charging coil, battery",1,-12,-90,{inner:1});
+    for(let r=30;r<=50;r+=5)add(p,new T.TorusGeometry(r,1.6,8,64),MAT.copper,"w-coil",0,0,-3.5);
+    add(p,slab(128,150,30,8,2),MAT.batt,"w-battery",0,0,3);
+    {const m=add(p,new T.PlaneGeometry(90,28),MAT.batt,"w-battery",0,0,7.2);m.material=label("BATTERY",90,28,"#1b1c20","#8a8e97");}
+    const b=layer("System board, motor, speaker",2,2,0,{inner:1});
+    add(b,slab(150,184,36,1.6,0),MAT.pcb,null,0,0,0);
+    const chip=(id,txt,w,h,x,y,sh)=>{add(b,box(w,h,3.2),sh?MAT.shield:MAT.chip,id,x,y,2.4);const m=add(b,new T.PlaneGeometry(w-5,h-5),MAT.chip,id,x,y,4.1);m.material=label(txt,w,h,sh?"#70737a":"#1a1b1f",sh?"#1c1d20":"#b9bec8");};
+    chip("w-sip","SiP",58,58,-30,46,false);chip("w-imu","IMU",26,22,36,64,false);chip("w-baro","BARO",26,22,36,36,false);chip("w-compass","MAG",20,20,60,10,false);chip("w-radios","GPS LTE\nWi-Fi BT",60,28,-30,-8,true);
+    add(b,box(124,30,11),MAT.motor,"w-haptic",0,-58,5);
+    {const m=add(b,new T.PlaneGeometry(70,14),MAT.motor,"w-haptic",0,-58,10.7);m.material=label("HAPTIC",70,14,"#7d8087","#1f2023");m.material.metalness=.9;}
+    add(b,box(20,46,10),MAT.plastic,"w-speaker",-64,30,5);
+    add(b,cyl(5,4),MAT.shield,"w-mic",62,-22,3,{rx:H});
+    const c=layer("Case, crown, button",3,0,0);
+    {const sh=rr(174,208,49);sh.holes.push(rr(160,194,42));add(c,ext(sh,40,3),MAT.frame,"w-case");}
+    add(c,cyl(17,16),MAT.btn,"w-crown",98,44,0,{rz:H});add(c,cyl(12,2),MAT.shield,"w-ecg",107,44,0,{rz:H});
+    add(c,box(6,52,14),MAT.btn,"w-button",92,-30,0);
+    add(c,cube(1.5,26,4),MAT.hole,"w-speaker",-90.4,-34,3);add(c,cube(1.5,26,4),MAT.hole,"w-speaker",-90.4,-34,-4);
+    add(c,cyl(2,1.5),MAT.hole,"w-mic",-90.4,36,0,{rz:H});
+    add(c,slab(124,70,14,8,2),MAT.pad,"w-band",0,146,-6);add(c,slab(124,70,14,8,2),MAT.pad,"w-band",0,-146,-6);
+    const d=layer("Display and touch",4,16.5,90);
+    add(d,slab(160,194,42,3,.5),MAT.panel,"w-display");
+    add(d,cyl(3.5,1),M({color:0x1c2233,metalness:.6,roughness:.2}),"w-als",0,84,1.6,{rx:H});
+    const g=layer("Crystal",5,20.5,170);
+    add(g,slab(166,200,46,3,1.2),MAT.glass,"w-glass",0,0,0,{nopick:true});
+  }
+
+  // ===== ring =====
+  begin("ring",{h:440,w:400,eh:0,ew:190,def:[14,-38],ex:[14,-58],back:[10,150]});
+  {
+    const l=layer("Inner lining, sensor windows",0,0,-170);
+    add(l,ext(annulus(124,131.5),66,1.5),MAT.liner,"r-liner");
+    [250,270,290].forEach(a=>{const m=polar(l,new T.SphereGeometry(10,20,14),MAT.lens,"r-domes",rad(a),125);m.scale.set(1,.45,1.6);});
+    const el=layer("Battery, flex circuit, sensors",1,0,0,{inner:1});
+    add(el,ext(arc(132.2,139.6,rad(22),rad(150)),54,0),MAT.batt,"r-battery");
+    add(el,ext(arc(137,139,rad(156),rad(384)),50,0),MAT.flex,"r-pcb");
+    polar(el,cube(14,5,14),MAT.ledG,"r-ppg",rad(270),134.6);
+    polar(el,cube(11,5,12),MAT.ledR,"r-spo2",rad(258),134.6);polar(el,cube(11,5,12),MAT.ledR,"r-spo2",rad(282),134.6);
+    polar(el,cube(13,5,14),MAT.hole,"r-pd",rad(245),134.6);polar(el,cube(13,5,14),MAT.hole,"r-pd",rad(295),134.6);
+    polar(el,cube(9,5,9),MAT.gold,"r-temp",rad(220),134.6);
+    polar(el,cube(15,5,15),MAT.chip,"r-imu",rad(322),134.6);
+    polar(el,cube(26,5,24),MAT.chip,"r-soc",rad(188),134.6);
+    add(el,ext(arc(133,136,rad(-12),rad(14)),44,0),MAT.copper,"r-charge");
+    const sh=layer("Titanium shell",2,0,170);
+    add(sh,ext(annulus(141,150),70,2.5),MAT.frame,"r-shell");
+  }
+
+  // ===== glasses =====
+  begin("glasses",{h:330,w:620,eh:120,ew:380,def:[12,-34],ex:[18,-38],back:[10,146]});
+  {
+    const f=layer("Frame front, cameras",3,0,0);
+    [-1,1].forEach(sx=>{const s=rr(160,124,40);s.holes.push(rr(138,102,30));add(f,ext(s,14,2),MAT.acetate,"g-frame",sx*92,0,0);
+      add(f,box(26,34,16),MAT.acetate,"g-frame",sx*180,30,-1);
+      add(f,cyl(10.5,3),MAT.ring,"g-camera",sx*180,34,7,{rx:H});add(f,cyl(7.5,3.6),MAT.lens,"g-camera",sx*180,34,7.2,{rx:H});
+      add(f,slab(12,18,5,5,1.5),MAT.liner,"g-nose",sx*17,-24,-11,{rz:sx*.3});
+      add(f,cyl(3,2),MAT.lens,"g-eye",sx*40,-50,-7.5,{rx:H});});
+    add(f,box(32,14,12),MAT.acetate,"g-frame",0,26,0);
+    add(f,cyl(2.6,2),MAT.ledW,"g-led",163,52,7,{rx:H});
+    add(f,cyl(2.6,2),M({color:0x1c2233,metalness:.6,roughness:.2}),"g-als",-163,52,7,{rx:H});
+    add(f,cyl(1.7,1.4),MAT.hole,"g-mic",0,18.6,3);add(f,cyl(1.7,1.4),MAT.hole,"g-mic",-8,26,6.2,{rx:H});
+    const ln=layer("Lenses, display",4,[0,0,0],[0,0,120]);
+    [-1,1].forEach(sx=>add(ln,slab(140,104,31,3,.8),MAT.lensG,"g-lens",sx*92,0,0,{nopick:true}));
+    add(ln,slab(56,40,4,.8,0),MAT.wave,"g-display",104,-4,1.6);
+    const t=layer("Temple arms, hinges",2,0,0);
+    [-1,1].forEach(sx=>{add(t,cube(14,30,300),MAT.acetate,"g-temple",sx*190,30,-162);add(t,cube(14,26,70),MAT.acetate,"g-temple",sx*190,22,-346,{rx:-.22});
+      add(t,cyl(5,34),MAT.shield,"g-hinge",sx*185,30,-10);
+      add(t,cube(8,1,34),MAT.hole,"g-speaker",sx*190,14.6,-228);
+      add(t,cyl(1.7,1),MAT.hole,"g-mic",sx*190,14.6,-44);});
+    add(t,cube(1,22,90),MAT.pad,"g-touch",197.2,30,-92);
+    add(t,cyl(2.2,1),MAT.gold,"g-charge",182.6,36,-34,{rz:H});add(t,cyl(2.2,1),MAT.gold,"g-charge",182.6,24,-34,{rz:H});
+    const r=layer("Right arm: projector, chip, speaker",5,[0,0,0],[150,0,0],{inner:1});
+    add(r,cube(9,20,34),MAT.shield,"g-projector",190,30,-36);add(r,cyl(5,4),MAT.lens,"g-projector",190,30,-18,{rx:H});
+    add(r,cube(3,22,112),MAT.pcb,"g-soc",188,30,-116);add(r,cube(5,16,30),MAT.chip,"g-soc",191.5,30,-100);
+    add(r,cube(5,10,12),MAT.chip,"g-imu",191.5,30,-150);
+    add(r,cube(9,16,40),MAT.motor,"g-speaker",190,26,-228);
+    add(r,cube(9,18,54),MAT.batt,"g-battery",190,22,-340,{rx:-.22});
+    const lf=layer("Left arm: battery, speaker",1,[0,0,0],[-150,0,0],{inner:1});
+    add(lf,cube(9,22,150),MAT.batt,"g-battery",-190,30,-112);
+    add(lf,cube(9,16,40),MAT.motor,"g-speaker",-190,26,-228);
+  }
+
+  // ===== earbud =====
+  begin("earbuds",{h:460,w:360,eh:0,ew:210,def:[8,-36],ex:[10,-58],back:[8,146]});
+  {
+    const inn=layer("Inner shell, nozzle",0,0,-170);
+    add(inn,new T.SphereGeometry(78,44,30,PI,PI),MAT.bud,"e-shell",0,70,0);
+    add(inn,new T.CylinderGeometry(24,24,210,30,1,true,H,PI),MAT.bud,"e-shell",0,-70,0);
+    add(inn,cyl(25,36),MAT.bud,"e-shell",-86,62,-12,{rz:H});
+    add(inn,cyl(7,2),MAT.hole,"e-mic-fb",-104.6,62,-12,{rz:H});
+    add(inn,cyl(9,2),MAT.lens,"e-wear",8,96,-72.5,{rx:H+.35});
+    add(inn,cyl(4,2),MAT.hole,"e-vent",40,112,-52,{rx:H+.55,rz:-.5});
+    const tip=layer("Ear tip",1,[0,0,0],[-150,0,0]);
+    add(tip,new T.SphereGeometry(44,36,22,0,2*PI,0,PI*.62),MAT.tip,"e-tip",-116,62,-12,{rz:H});
+    const mid=layer("Driver, battery, chip, sensors",2,0,0,{inner:1});
+    add(mid,cyl(30,22),MAT.shield,"e-driver",-50,62,-10,{rz:H});add(mid,cyl(22,23),MAT.chip,"e-driver",-50.5,62,-10,{rz:H});
+    add(mid,cyl(34,30),MAT.batt,"e-battery",18,76,0,{rx:H});
+    add(mid,cube(30,96,2.4),MAT.pcb,"e-chip",0,-40,0);add(mid,box(22,26,5),MAT.chip,"e-chip",0,-16,3.2);
+    add(mid,box(13,13,4),MAT.chip,"e-imu",0,-50,3);
+    add(mid,cube(3,120,2),MAT.gold,"e-antenna",11,-84,-3.5);
+    add(mid,cyl(6,5),MAT.hole,"e-mic-voice",0,-166,0);
+    add(mid,cyl(23,3),MAT.shield,"e-charge",0,-175,0);
+    const out=layer("Outer shell, stem sensor",3,0,170);
+    add(out,new T.SphereGeometry(78,44,30,0,PI),MAT.bud,"e-shell",0,70,0);
+    add(out,new T.CylinderGeometry(24,24,210,30,1,true,-H,PI),MAT.bud,"e-shell",0,-70,0);
+    add(out,cyl(9,2),MAT.hole,"e-mic-ff",0,112,65.5,{rx:H-.57});
+    add(out,cube(18,64,1.5),MAT.pad,"e-force",0,-92,23.6);
+  }
+
+  // layer anchors and labels
+  const tagBox=$("#tags"), bx=new T.Box3(), b2=new T.Box3(), v=new T.Vector3();
+  for(const k in DEV){const d=DEV[k];d.layers.forEach(g=>{bx.setFromObject(g);const c=bx.getCenter(new T.Vector3());g.userData.anchor=new T.Vector3(c.x,bx.max.y+4,c.z);const el=document.createElement("div");el.className="tag";el.textContent=g.userData.name;tagBox.appendChild(el);d.tags.push(el)});d.root.visible=false;}
+
+  let hl=[];
+  const setHL=ids=>{
+    hl.forEach(m=>{const u=m.userData;if(u.em){m.material.emissive.copy(u.em);m.material.emissiveIntensity=u.ei}else if(u.col){m.material.color.copy(u.col);m.material.opacity=u.op}});
+    hl=[];const P=DEV[active()].parts;
+    ids.forEach(id=>(P[id]||[]).forEach(m=>{const u=m.userData;if(m.material.emissive){u.em=u.em||m.material.emissive.clone();u.ei=u.ei===undefined?m.material.emissiveIntensity:u.ei;m.material.emissive.set(0xff5a00)}else{u.col=u.col||m.material.color.clone();u.op=u.op===undefined?m.material.opacity:u.op;m.material.color.set(0xff5a00);m.material.opacity=.95}hl.push(m)}));
+  };
+  const flags=ids=>{const P=DEV[active()].parts,o={};ids.forEach(id=>(P[id]||[]).forEach(m=>{if(m.parent.userData.inner)o.inner=1;if(m.parent.userData.back)o.back=1}));return o};
+  const ray=new T.Raycaster();
+  const pickAt=(cx,cy)=>{const r=stage.getBoundingClientRect();ray.setFromCamera({x:(cx-r.left)/r.width*2-1,y:-(cy-r.top)/r.height*2+1},camera);const h=ray.intersectObjects(DEV[active()].pickables,false)[0];return h?h.object.userData.p:null};
+  const fx=n=>Math.abs(n)<1e-10?0:n;
+  const camM=m=>{const a=m.elements;return `matrix3d(${fx(a[0])},${fx(-a[1])},${fx(a[2])},${fx(a[3])},${fx(a[4])},${fx(-a[5])},${fx(a[6])},${fx(a[7])},${fx(a[8])},${fx(-a[9])},${fx(a[10])},${fx(a[11])},${fx(a[12])},${fx(-a[13])},${fx(a[14])},${fx(a[15])})`};
+  const objM=m=>{const a=m.elements;return `translate(-50%,-50%) matrix3d(${fx(a[0])},${fx(a[1])},${fx(a[2])},${fx(a[3])},${fx(-a[4])},${fx(-a[5])},${fx(-a[6])},${fx(-a[7])},${fx(a[8])},${fx(a[9])},${fx(a[10])},${fx(a[11])},${fx(a[12])},${fx(a[13])},${fx(a[14])},${fx(a[15])})`};
+  const css3d=$("#css3d"), cam3d=$("#cam3d"), pin=$("#pin");
+  const t13=Math.tan(rad(13));
+  let W=0,Hh=0;
+  const proj=p=>{p.project(camera);return [(p.x*.5+.5)*W,(-p.y*.5+.5)*Hh]};
+
+  function frame(now){
+    requestAnimationFrame(frame);
+    if(mode==="ix")return;
+    const w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;
+    if(w!==W||h!==Hh){W=w;Hh=h;renderer.setSize(w,h,false);camera.aspect=w/h;}
+    const isHW=mode==="hw", A=active(), D_=DEV[A], f=D_.fit, trz=(!isHW&&cur().rz)||0, k=reduce||(drag&&drag.moved)?1:.16, ke=reduce?1:.14;
+    C.rx+=(rx-C.rx)*k;C.ry+=(ry-C.ry)*k;C.rz+=(trz-C.rz)*ke;C.e+=(e-C.e)*ke;
+    for(const n in DEV)DEV[n].root.visible=n===A;
+    D_.root.rotation.set(rad(C.rx),rad(C.ry),rad(-C.rz));
+    D_.layers.forEach(g=>{const u=g.userData;g.position.set(u.p0[0]+C.e*u.p1[0],u.p0[1]+C.e*u.p1[1],u.p0[2]+C.e*u.p1[2])});
+    Lg.visible=isHW;G_touch.visible=isHW;DEV.phone.parts.safearea[0].visible=isHW;DEV.phone.parts.fingerprint[0].visible=isHW;
+    const s=Math.abs(Math.sin(rad(C.rz))), needH=f.h+C.e*(f.eh+190), needW=Math.max(f.w+C.e*f.ew,f.w+s*300);
+    const Dz=Math.max(needH/2/t13,needW/2/(t13*camera.aspect));
+    camera.position.set(0,C.e*78,Dz);camera.updateProjectionMatrix();
+    const pulse=reduce?.4:.34+.2*Math.sin(now*.006);
+    hl.forEach(m=>{if(m.material.emissive)m.material.emissiveIntensity=pulse*(m.userData.k||1)*2.2});
+    renderer.render(scene,camera);
+    if(!isHW){
+      const fov=camera.projectionMatrix.elements[5]*h/2;
+      css3d.style.perspective=fov+"px";cam3d.style.width=w+"px";cam3d.style.height=h+"px";
+      cam3d.style.transform=`translateZ(${fov}px)`+camM(camera.matrixWorldInverse)+`translate(${w/2}px,${h/2}px)`;
+      anchor.updateWorldMatrix(true,false);screen.style.transform=objM(anchor.matrixWorld);
+    }
+    const show=isHW&&C.e>.32;
+    for(const n in DEV)if(n!==A||!show)DEV[n].tags.forEach(d=>d.style.opacity=0);
+    if(show){
+      const pts=D_.layers.map((g,i)=>{v.copy(g.userData.anchor);g.localToWorld(v);const p=proj(v);return {i,x:p[0],y:p[1]}});
+      const top=Math.min(...pts.map(p=>p.y));
+      pts.slice().sort((a,b)=>b.x-a.x).forEach((p,rank)=>{const d=D_.tags[p.i],ty=top-30-rank*22;d.style.opacity=Math.min(1,(C.e-.32)*3);d.style.setProperty("--h",Math.max(0,p.y-ty-18).toFixed(1)+"px");const tw=d.offsetWidth,flip=p.x+tw>W-6;d.classList.toggle("r",flip);d.style.transform=`translate(${(flip?p.x-tw+1:p.x).toFixed(1)}px,${ty.toFixed(1)}px)`;});
+    }
+    if(isHW&&hl.length){const first=hl[0];bx.setFromObject(first);if(hl.length>1&&hl.every(m=>m.parent===first.parent&&m.position.distanceTo(first.position)<70))hl.forEach(m=>{b2.setFromObject(m);bx.union(b2)});bx.getCenter(v);const p=proj(v);pin.style.display="block";pin.style.transform=`translate(${p[0].toFixed(1)}px,${p[1].toFixed(1)}px)`;}else pin.style.display="none";
+  }
+  requestAnimationFrame(frame);
+  return {setHL,pickAt,flags,fit:n=>DEV[n].fit};
+}
+
+const FIT0={phone:{def:[12,-32],front:[5,-14],ex:[12,-64],back:[8,160]}};
+const fitOf=()=>G?G.fit(active()):FIT0.phone;
+function setE(v){e=v;ex.value=Math.round(v*100);}
+const VIEWS={front:()=>{const f=fitOf(),p=f.front||f.def;rx=p[0];ry=p[1];setE(0)},back:()=>{const p=fitOf().back;rx=p[0];ry=p[1];setE(0)},explode:()=>{const p=fitOf().ex;rx=p[0];ry=p[1];setE(1)},def:()=>{const p=fitOf().def;rx=p[0];ry=p[1];setE(0)}};
+const dots=g=>`<div class="fgw">${g.map(d=>d[0]==="orb"?`<div class="orb"><i class="fg st" style="--x0:-46px;--y0:-30px"></i><i class="fg st" style="--x0:46px;--y0:30px"></i></div>`:`<i class="fg" style="--a:${d[0]};--x0:${d[1]}px;--y0:${d[2]}px;--x1:${d[3]??d[1]}px;--y1:${d[4]??d[2]}px"></i>`).join("")}</div>`;
+
+// ---------- index and fuzzy search ----------
+const ALL=[];
+for(const k in HWDEV)HWDEV[k].items.forEach(it=>ALL.push({m:"hw",dev:k,it,sec:"Hardware",sub:HWDEV[k].name,path:`Hardware / ${HWDEV[k].name} / ${it.grp}`}));
+DATA.in.forEach(it=>ALL.push({m:"in",it,sec:"Input",sub:"",path:`Input / ${it.grp}`}));
+DATA.sw.forEach(it=>ALL.push({m:"sw",it,sec:"Software",sub:"",path:`Software / ${it.grp}`}));
+const cz=s=>nz(s.replace(/[-\u2019']/g,""));
+const nz=s=>s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g," ").trim();
+ALL.forEach((en,i)=>{en.n=i+1;const it=en.it;en.name=nz(it.n);const W2=(t,min)=>[...new Set((nz(t)+" "+cz(t)).split(" "))].filter(w=>w.length>=min);en.f=[[W2(it.n,1),3],[W2((it.ios||"")+" "+(it.and||""),1),2.4],[W2(en.path,1),1.5],[W2(it.d+" "+it.t,3),1]];});
+const lev=(a,b)=>{const m=a.length,n=b.length;if(!m)return n;if(!n)return m;let p=Array.from({length:n+1},(_,j)=>j);for(let i=1;i<=m;i++){const c=[i];for(let j=1;j<=n;j++)c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1));p=c}return p[n]};
+const wscore=(q,w)=>{
+  if(!w)return 0;if(w===q)return 1;if(w.startsWith(q))return .9;
+  if(q.length<3)return 0;
+  if(w.includes(q))return .72;
+  const lim=q.length<=4?1:q.length<=7?2:3;
+  const d=Math.min(lev(q,w),lev(q,w.slice(0,q.length)),lev(q,w.slice(0,q.length+1)));
+  if(d<=lim)return .62*(1-d/(q.length+1));
+  let i=0;for(const c of w)if(c===q[i])i++;
+  return i===q.length?.2:0;
+};
+function search(q){
+  const toks=nz(q).split(" ").filter(Boolean);if(!toks.length)return null;
+  const joined=toks.join(" ");
+  const out=[], one=toks.join("");
+  const sc1=(en,ts)=>{let s=0,hit=0;for(const t of ts){let best=0;for(const [ws,wt] of en.f)for(const w of ws){const sc=wscore(t,w)*wt;if(sc>best)best=sc}if(best>0)hit++;s+=best}return hit?s*Math.pow(hit/ts.length,1.5):0};
+  for(const en of ALL){let s=sc1(en,toks);if(toks.length>1)s=Math.max(s,sc1(en,[one])*toks.length*.9);
+    if(!s)continue;if(en.name.includes(joined))s+=2;if(en.name===joined)s+=2;
+    out.push({en,s});}
+  out.sort((a,b)=>b.s-a.s);
+  const top=out.length?out[0].s:0;
+  return out.filter(o=>o.s>=top*.3).slice(0,40).map(o=>o.en);
+}
+function renderIndex(){
+  const q=$("#q").value, res=search(q), box=$("#ixres");
+  if(res&&res.length){
+    $("#ixn").textContent=`${res.length} closest of ${ALL.length}`;
+    box.innerHTML=res.map(en=>`<button class="hit" data-n="${en.n}"><span>${pad(en.n)}</span><span>${en.it.n}${en.it.ios&&en.it.ios!==en.it.n?` <em>/ ${en.it.ios}</em>`:""}</span><span>${en.path}</span></button>`).join("");
+    return;
+  }
+  $("#ixn").textContent=res?`No close match / showing all ${ALL.length}`:`${ALL.length} entries`;
+  const secs=[];ALL.forEach(en=>{const key=en.sec+"|"+en.sub;let s=secs.find(x=>x.key===key);if(!s){s={key,sec:en.sec,sub:en.sub,g:[]};secs.push(s)}let g=s.g.find(x=>x.n===en.it.grp);if(!g){g={n:en.it.grp,e:[]};s.g.push(g)}g.e.push(en)});
+  box.innerHTML=secs.map(s=>`<div class="sec"><h2>${s.sub||s.sec}<small>${s.sub?s.sec:""} ${s.g.reduce((a,g)=>a+g.e.length,0)} entries</small></h2><div class="cols">${s.g.map(g=>`<div class="grp"><h3>${g.n}</h3>${g.e.map(en=>`<button class="li" data-n="${en.n}"><span>${pad(en.n)}</span><span>${en.it.n}</span><span>${done[(en.m)+en.it.id]?"x":""}</span></button>`).join("")}</div>`).join("")}</div></div>`).join("");
+}
+function go(en){
+  mode=en.m;if(en.m==="hw"){dev=en.dev;selHW[dev]=en.it.id}else sel[en.m]=en.it.id;
+  if(mode==="hw")VIEWS.def();else VIEWS.front();
+  try{history.replaceState(null,"","#"+HASH[mode])}catch(_){}
+  render();focusPart();
+}
+
+// ---------- render ----------
+function render(){
+  const isIX=mode==="ix", isHW=mode==="hw";
+  for(const m in LABEL)$("#m-"+m).setAttribute("aria-pressed",mode===m);
+  $("#detail").hidden=$("#stagewrap").hidden=$("#side").hidden=isIX;$("#index").hidden=!isIX;
+  if(isIX){$("#num").textContent=pad(ALL.length);renderIndex();return;}
+  const L=list(), it=cur(), idx=L.indexOf(it);
+  stage.className="stage "+(isHW?"hw":"sw")+(stage.classList.contains("dragging")?" dragging":"");
+  document.querySelectorAll(".hwtool").forEach(x=>x.hidden=!isHW);
+  $("#devs").innerHTML=isHW?Object.keys(HWDEV).map(k=>`<button class="b" data-dev="${k}" aria-pressed="${k===dev}">${HWDEV[k].name}</button>`).join(""):"";
+  screen.querySelectorAll(".fgw").forEach(n=>n.remove());
+  if(!isHW){
+    const key=it.s+"|"+(it.cls||"");
+    if(screen.dataset.scene!==key){screen.querySelectorAll(".scn").forEach(n=>n.remove());screen.insertAdjacentHTML("beforeend",SCENES[it.s]());if(it.cls)screen.querySelector(".scn").classList.add(it.cls);screen.dataset.scene=key;}
+    if(it.g)screen.insertAdjacentHTML("beforeend",dots(it.g));
+  }
+  const ids=[].concat(it.hl||it.id);
+  document.querySelectorAll(".hl").forEach(n=>n.classList.remove("hl"));
+  if(!isHW)ids.forEach(k=>screen.querySelectorAll(`[data-p="${k}"]`).forEach(n=>n.classList.add("hl")));
+  if(G)G.setHL(isHW?ids:[]);
+  const en=ALL.find(a=>a.it.id===it.id&&a.m===mode&&(!isHW||a.dev===dev));
+  $("#num").textContent=pad(en?en.n:idx+1);
+  $("#callout").textContent=it.n;
+  const found=!!done[mode+it.id], n=L.filter(i=>done[mode+i.id]).length;
+  const where=isHW&&dev!=="phone"?"On the device":"On your phone";
+  $("#detail").innerHTML=`<div class="lab"><span>About</span><span>${idx+1} / ${L.length}</span></div><p>${it.d}</p><div class="lab"><span>${where}</span></div><p class="task">${it.t}</p><div class="act"><button class="chk" id="found" aria-pressed="${found}">[ ${found?"x":" "} ] Found</button><button class="b" id="prev">Previous</button><button class="b" id="next">Next</button></div>`;
+  const row=(a,b,w)=>`<div${w?' class="w"':""}><dt>${a}</dt><dd>${b}</dd></div>`;
+  $("#meta").innerHTML=row("Name",it.n,1)+row("Section",isHW?`Hardware / ${HWDEV[dev].name}`:LABEL[mode])+row("Category",it.grp)+(it.ios?row("iOS",it.ios):"")+(it.and?row("Android",it.and):"")+(it.x?row("Note","Not on this model",1):"")+row("Found",`${n} / ${L.length}`);
+  let k=0;
+  $("#groups").innerHTML=groups().map(([g,items])=>`<div class="grp"><h3>${g}</h3>${items.map(i=>`<button class="li" data-id="${i.id}" aria-current="${i.id===it.id}"><span>${++k}.</span><span>${i.n}${i.id===it.id?" []":""}</span><span>${done[mode+i.id]?"x":""}</span></button>`).join("")}</div>`).join("");
+}
+function focusPart(){
+  if(mode!=="hw"||!G)return;const it=cur(), fl=G.flags([].concat(it.hl||it.id));
+  if(fl.inner&&e<.5)VIEWS.explode();else if(fl.back&&e<.5&&Math.cos(ry*Math.PI/180)>0){const p=fitOf().back;rx=p[0];ry=p[1];}
+}
+function pick(id,fromModel){
+  if(!list().some(i=>i.id===id))return;
+  if(mode==="hw")selHW[dev]=id;else sel[mode]=id;
+  render();if(!fromModel)focusPart();
+}
+function setMode(m){mode=m;if(m==="hw")VIEWS.def();else if(m!=="ix")VIEWS.front();try{history.replaceState(null,"","#"+HASH[m])}catch(_){}render();if(m==="ix")$("#q").focus();}
+
+// ---------- events ----------
+for(const m in LABEL)$("#m-"+m).onclick=()=>setMode(m);
+$("#devs").onclick=ev=>{const b=ev.target.closest("[data-dev]");if(b&&b.dataset.dev!==dev){dev=b.dataset.dev;VIEWS.def();render();}};
+$("#groups").onclick=ev=>{const b=ev.target.closest("[data-id]");if(b)pick(b.dataset.id);};
+$("#detail").onclick=ev=>{const l=list(),i=l.indexOf(cur()),id=ev.target.id;if(id==="prev")pick(l[(i-1+l.length)%l.length].id);if(id==="next")pick(l[(i+1)%l.length].id);if(id==="found"){const k=mode+cur().id;done[k]=!done[k];save();render();$("#found").focus();}};
+$("#tools").onclick=ev=>{const v=ev.target.dataset&&ev.target.dataset.view;if(v)VIEWS[v]();};
+$("#q").oninput=renderIndex;
+$("#ixres").onclick=ev=>{const b=ev.target.closest("[data-n]");if(b)go(ALL[b.dataset.n-1]);};
+ex.oninput=()=>{e=ex.value/100;};
+stage.addEventListener("pointerdown",ev=>{drag={x:ev.clientX,y:ev.clientY,rx,ry,moved:false,t:ev.target};});
+stage.addEventListener("pointermove",ev=>{if(!drag)return;const dx=ev.clientX-drag.x,dy=ev.clientY-drag.y;if(!drag.moved&&Math.hypot(dx,dy)<5)return;if(!drag.moved){drag.moved=true;stage.classList.add("dragging");try{stage.setPointerCapture(ev.pointerId)}catch(_){}}ry=drag.ry+dx*.5;rx=Math.max(-75,Math.min(75,drag.rx+dy*.4));});
+stage.addEventListener("pointerup",ev=>{if(!drag)return;const d=drag;drag=null;stage.classList.remove("dragging");if(d.moved)return;const p=d.t.closest&&d.t.closest("#screen [data-p]");if(p)pick(p.dataset.p,true);else if(G&&mode==="hw"){const id=G.pickAt(ev.clientX,ev.clientY);if(id)pick(id,true);}});
+stage.addEventListener("pointercancel",()=>{drag=null;stage.classList.remove("dragging");});
+const fromHash=()=>Object.keys(HASH).find(k=>"#"+HASH[k]===location.hash)||"hw";
+window.addEventListener("hashchange",()=>{const m=fromHash();if(m!==mode)setMode(m);});
+mode=fromHash();
+try{if(!window.THREE)throw new Error("The 3D library did not load. Check your internet connection and reload.");G=build();}
+catch(err){$("#glerr").hidden=false;$("#glerr").textContent=window.THREE?"This browser could not start WebGL, so the 3D models cannot be shown. The lists and descriptions still work.":err.message;}
+if(mode!=="hw"&&mode!=="ix")VIEWS.front();
+render();
+
+</script>
+</body>
+</html>
