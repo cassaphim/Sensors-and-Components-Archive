@@ -24,6 +24,7 @@ The site is one file, `index.html`. Open it in a browser. It loads three.js and 
 
 | Version | Date | Changes |
 | --- | --- | --- |
+| v6 | 22 Nov 2026 | Other uses lists on hardware entries, starting with the phone's front camera, microphones and motion sensors. |
 | v5 | 22 Nov 2026 | Version list added. Published on GitHub Pages. |
 | v4 | 21 Nov 2026 | Watch, ring, glasses and earbud models. Index mode with approximate search. Monospace archive restyle. 282 entries. |
 | v3 | 21 Nov 2026 | Phone rebuilt as a WebGL model with studio lighting and physically based materials. |

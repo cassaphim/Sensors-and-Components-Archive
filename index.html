@@ -41,6 +41,9 @@ main{display:grid;grid-template-columns:minmax(220px,290px) minmax(0,1fr) minmax
 .col{overflow-y:auto;min-height:0;scrollbar-width:thin;padding:0 4px 24px 0}
 #detail p{color:var(--mute);max-width:38ch;margin-bottom:34px}
 #detail p.task{color:var(--ink)}
+.uses{list-style:none;margin:0 0 34px;padding:0;color:var(--mute);max-width:38ch}
+.uses li{padding-left:2ch;text-indent:-2ch}
+.uses li::before{content:"+ "}
 .act{display:flex;flex-wrap:wrap;gap:6px 18px;text-transform:uppercase}
 .chk{white-space:pre;text-transform:uppercase}
 .chk:hover{color:var(--mute)}
@@ -417,7 +420,7 @@ input[type=range]::-moz-range-thumb{width:9px;height:13px;background:var(--ink);
 <body>
 <div class="app">
   <header>
-    <div class="brand"><span id="num">001</span><span>Phone Anatomy Lab</span><span>v5</span></div>
+    <div class="brand"><span id="num">001</span><span>Phone Anatomy Lab</span><span>v6</span></div>
     <nav class="modes" aria-label="Section">
       <button class="b" id="m-hw">Hardware</button>
       <button class="b" id="m-in">Input</button>
@@ -449,7 +452,8 @@ input[type=range]::-moz-range-thumb{width:9px;height:13px;background:var(--ink);
     <section id="index" hidden>
       <div class="ixbar"><label for="q">Search</label><input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="type a rough guess: hart rate, notifcation, swipe, wifi"><span id="ixn"></span></div>
       <div id="ixres"></div>
-      <div class="sec" id="versions"><h2>Versions<small>5 releases</small></h2><div>
+      <div class="sec" id="versions"><h2>Versions<small>6 releases</small></h2><div>
+        <div class="ver"><span>v6</span><span>22 Nov 2026</span><span>Other uses lists on hardware entries, starting with the phone's front camera, microphones and motion sensors.</span></div>
         <div class="ver"><span>v5</span><span>22 Nov 2026</span><span>Version list added. Published on GitHub Pages.</span></div>
         <div class="ver"><span>v4</span><span>21 Nov 2026</span><span>Watch, ring, glasses and earbud models. Index mode with approximate search. Monospace archive restyle. 282 entries.</span></div>
         <div class="ver"><span>v3</span><span>21 Nov 2026</span><span>Phone rebuilt as a WebGL model with studio lighting and physically based materials.</span></div>
@@ -467,7 +471,7 @@ const HW = [
   {id:"glass",n:"Cover glass",d:"Strengthened glass that protects the display. Its coating is the surface your finger slides on.",t:"Tilt your phone under a light. Find the seam where glass meets frame."},
   {id:"display",n:"Display panel",d:"The OLED or LCD layer that makes the image. Every pixel is lit and coloured here.",t:"Open Settings > Display. What resolution and refresh rate does your phone list?"},
   {id:"touch",n:"Touch sensor",d:"A transparent capacitive grid bonded to the display. It reads where your skin disturbs its electric field.",t:"Tap with a fingernail, then a fingertip. Why does only one register?"},
-  {id:"frontcam",n:"Front camera",d:"The selfie camera, behind a notch, punch-hole or pill cutout. Face unlock sensors often sit beside it.",t:"Which cutout shape does your phone have? How does the status bar arrange itself around it?"},
+  {id:"frontcam",n:"Front camera",d:"The selfie camera, behind a notch, punch-hole or pill cutout. Face unlock sensors often sit beside it.",t:"Which cutout shape does your phone have? How does the status bar arrange itself around it?",u:["Gaze detection","Eye tracking","Facial recognition"]},
   {id:"earpiece",n:"Earpiece speaker",d:"The thin slot at the top edge for calls. On most phones it is also the second stereo speaker.",t:"Play music and cover the bottom speaker. Is there still sound from the top?"},
   {id:"prox",n:"Proximity and light sensors",d:"Hidden near the front camera. One turns the screen off against your ear; the other drives auto-brightness.",t:"During a call, cover the top of the screen with your hand. What happens?"},
   {id:"fingerprint",n:"Fingerprint reader",d:"An optical or ultrasonic sensor under the display, or a capacitive one in the power button. Phones with only face unlock have none.",t:"Where is yours: under the screen, on the side, on the back, or absent?"}]],
@@ -480,12 +484,12 @@ const HW = [
   {id:"sim",n:"SIM tray",d:"Holds the physical SIM card and opens with a pin. eSIM-only phones have no tray.",t:"Find the tray and its pinhole, or confirm your phone is eSIM only."},
   {id:"usbc",n:"Charging port",d:"USB-C on current phones, Lightning on older iPhones. It carries power, data, audio and video.",t:"What can you plug into yours besides a charger?"},
   {id:"speaker",n:"Loudspeaker",d:"The main speaker module, firing through the grille beside the port.",t:"Which grille holes make sound? One side is often only a microphone."},
-  {id:"mic",n:"Microphones",d:"Phones carry two to four: bottom for calls, top and rear for noise cancelling and video.",t:"Find every pinhole on your phone that is not the SIM eject hole."}]],
+  {id:"mic",n:"Microphones",d:"Phones carry two to four: bottom for calls, top and rear for noise cancelling and video.",t:"Find every pinhole on your phone that is not the SIM eject hole.",u:["Device positioning relative to users and others","Ambient noise detection","Voice as stress level indicator"]}]],
  ["Inside",[
   {id:"soc",n:"Processor (system on chip)",d:"CPU, graphics and AI processing in one chip. It decides how fast the phone feels.",t:"Look up which chip your phone uses."},
   {id:"storage",n:"Memory and storage",d:"RAM holds the apps that are open. Flash storage keeps your files when the phone is off.",t:"Open Settings > Storage. How much is used, and by what?"},
   {id:"radios",n:"Radios",d:"The modem and antennas for cellular, Wi-Fi, Bluetooth and GPS; on some phones also ultra-wideband and satellite.",t:"Open your quick toggles. Which radios can you switch off there?"},
-  {id:"motion",n:"Motion sensors",d:"Accelerometer, gyroscope, compass and barometer. They drive screen rotation, step counting and raise to wake.",t:"Open a compass or level app. Rotate the phone and watch the values move."},
+  {id:"motion",n:"Motion sensors",d:"Accelerometer, gyroscope, compass and barometer. They drive screen rotation, step counting and raise to wake.",t:"Open a compass or level app. Rotate the phone and watch the values move.",u:["Device posture as mode switch","Device posture as authentication"]},
   {id:"battery",n:"Battery",d:"A lithium-ion cell and the largest part inside. Capacity is measured in mAh.",t:"Open Settings > Battery. Find battery health or usage by app."},
   {id:"haptic",n:"Haptic motor",d:"A linear motor that produces taps and vibrations. Good haptics feel like a click, weak ones like a buzz.",t:"Flip a switch in Settings with sound off. Can you feel it?"},
   {id:"rearcams",n:"Rear cameras",d:"One to four modules with different lenses: wide, ultrawide, telephoto.",t:"Open the camera and change zoom while covering one lens at a time. Which lens takes over?"}]],
@@ -1244,7 +1248,7 @@ DATA.in.forEach(it=>ALL.push({m:"in",it,sec:"Input",sub:"",path:`Input / ${it.gr
 DATA.sw.forEach(it=>ALL.push({m:"sw",it,sec:"Software",sub:"",path:`Software / ${it.grp}`}));
 const cz=s=>nz(s.replace(/[-\u2019']/g,""));
 const nz=s=>s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g," ").trim();
-ALL.forEach((en,i)=>{en.n=i+1;const it=en.it;en.name=nz(it.n);const W2=(t,min)=>[...new Set((nz(t)+" "+cz(t)).split(" "))].filter(w=>w.length>=min);en.f=[[W2(it.n,1),3],[W2((it.ios||"")+" "+(it.and||""),1),2.4],[W2(en.path,1),1.5],[W2(it.d+" "+it.t,3),1]];});
+ALL.forEach((en,i)=>{en.n=i+1;const it=en.it;en.name=nz(it.n);const W2=(t,min)=>[...new Set((nz(t)+" "+cz(t)).split(" "))].filter(w=>w.length>=min);en.f=[[W2(it.n,1),3],[W2((it.ios||"")+" "+(it.and||""),1),2.4],[W2(en.path,1),1.5],[W2((it.u||[]).join(" "),1),2.2],[W2(it.d+" "+it.t,3),1]];});
 const lev=(a,b)=>{const m=a.length,n=b.length;if(!m)return n;if(!n)return m;let p=Array.from({length:n+1},(_,j)=>j);for(let i=1;i<=m;i++){const c=[i];for(let j=1;j<=n;j++)c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1));p=c}return p[n]};
 const wscore=(q,w)=>{
   if(!w)return 0;if(w===q)return 1;if(w.startsWith(q))return .9;
@@ -1311,7 +1315,7 @@ function render(){
   $("#callout").textContent=it.n;
   const found=!!done[mode+it.id], n=L.filter(i=>done[mode+i.id]).length;
   const where=isHW&&dev!=="phone"?"On the device":"On your phone";
-  $("#detail").innerHTML=`<div class="lab"><span>About</span><span>${idx+1} / ${L.length}</span></div><p>${it.d}</p><div class="lab"><span>${where}</span></div><p class="task">${it.t}</p><div class="act"><button class="chk" id="found" aria-pressed="${found}">[ ${found?"x":" "} ] Found</button><button class="b" id="prev">Previous</button><button class="b" id="next">Next</button></div>`;
+  $("#detail").innerHTML=`<div class="lab"><span>About</span><span>${idx+1} / ${L.length}</span></div><p>${it.d}</p>${it.u?`<div class="lab"><span>Other uses</span></div><ul class="uses">${it.u.map(x=>`<li>${x}</li>`).join("")}</ul>`:""}<div class="lab"><span>${where}</span></div><p class="task">${it.t}</p><div class="act"><button class="chk" id="found" aria-pressed="${found}">[ ${found?"x":" "} ] Found</button><button class="b" id="prev">Previous</button><button class="b" id="next">Next</button></div>`;
   const row=(a,b,w)=>`<div${w?' class="w"':""}><dt>${a}</dt><dd>${b}</dd></div>`;
   $("#meta").innerHTML=row("Name",it.n,1)+row("Section",isHW?`Hardware / ${HWDEV[dev].name}`:LABEL[mode])+row("Category",it.grp)+(it.ios?row("iOS",it.ios):"")+(it.and?row("Android",it.and):"")+(it.x?row("Note","Not on this model",1):"")+row("Found",`${n} / ${L.length}`);
   let k=0;
